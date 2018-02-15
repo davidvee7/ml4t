@@ -18,8 +18,8 @@ def test_code(verb = True):
     enddate =dt.datetime(2008,1,15) # just a few days for "shake out"
 
     # train the learner
-    learner.addEvidence(symbol = sym, sd = stdate, \
-        ed = enddate, sv = 10000) 
+    learner.addEvidence(symbol = sym, startDate= stdate, \
+        endDate= enddate, sv = 10000)
 
     # set parameters for testing
     sym = "IBM"

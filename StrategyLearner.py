@@ -26,105 +26,74 @@ class StrategyLearner(object):
 
         pass
 
-    def addEvidence(self,symbol = "IBM", sd=dt.datetime(2007,12,31), ed=dt.datetime(2009,12,31), sv = 10000):
-        dates = pd.date_range(sd, ed)
-        allDf = self.setUp(dates,symbol)
+
+    def addEvidence(self,symbol = "IBM", startDate=dt.datetime(2007,12,31), endDate=dt.datetime(2009,12,31), sv = 10000):
+
+        #Get a data frame of dates and closing prices from start date to end date
+        dates = pd.date_range(startDate, endDate)
+
+        #setUp will get relevant metrics such as momentum, volatility, etc into a single dataframe.
+        allDataMetricsDF = self.setUp(dates,symbol)
 
         # print "initial size post set up. maybe set up mutates it"
-        # print allDf.shape
 
-        allDf = allDf[:,:]
+        allDataMetricsDF = allDataMetricsDF[:,:]
 
-        data = self.discretize(allDf)
-        # print "proper discretize"
-        # print data
-        # print "discretized"
-        # print data
-        # benchmark = allDf[:,-1].sum() - allDf.shape[0]
-        # print "benchmark is "
-        # print benchmark
-        # self.QLearner.querysetstate()
-        shape = allDf.shape
-        # print type(data)
+        discretizedDataMetricsDF = self.discretize(allDataMetricsDF)
 
-        data = data.loc[1:,:]
-        # ones = np.zeros((shape[0],1))
-        # dfTrades = pd.DataFrame(ones)
+        shape = allDataMetricsDF.shape
 
+        discretizedDataMetricsDF = discretizedDataMetricsDF.loc[1:,:]
 
         for iteration in range(0,200):
             if time.time() >=self.endtime:
                 break
-            # dfTrades.iloc[0] = 0
-            # dfTrades.iloc[1] = 0
-            # dfTrades.iloc[2] = 0
 
             steps=2
             robopos = 0
 
-            # print data
-
-            datum = data.iloc[4,:] #convert the location to a state
+            datum = discretizedDataMetricsDF.iloc[4,:]
+            #convert the very first location to a state.  start at 4th date so can use the preceeding 3 dates as well
+            #to map out a state.
             state = self.makeIntoState(datum,robopos)
             action = self.QLearner.querysetstate(state) #set the state and get first action
             cumulativeRewards = 0
             r=0
+            #iterate from the 3rd date until the last date
             for i in range (3,shape[0]-1):
-                # print " action"
-                # print action
-                # print robopos
                 newpos = self.movebot(robopos,action)
 
                 #move to new location according to action and then get a new action
-
-                if i >0:# shape[0]-1:
-                    if newpos == 1:
-                        r = allDf[i,-1]-1
-                        # print "bout to add below r to cumulativerewards"
-                        # print r
-
-                        cumulativeRewards+=r
-                    elif newpos == 2:
-                        r = (allDf[i,-1]-1)*-1
-                        cumulativeRewards+=r
-
-                    else:
-                        # print "dis what robopos equals after rejection"
-                        # print robopos
-                        r = 0
+                if newpos == 1:   #Buy
+                    r = (allDataMetricsDF[i,-1]-1)
+                    cumulativeRewards+=r
+                elif newpos == 2: #Sell
+                    r = (allDataMetricsDF[i,-1]-1)*-1
+                    cumulativeRewards+=r
                 else:
-                    state= self.makeIntoState(datum,newpos)
-                    # dfTrades.iloc[i] = 0
-                    robopos = newpos
-                    steps+=1
-                    continue
+                    r = 0
 
-                datum = data.iloc[i,:]
+                robopos = newpos
+                steps+=1
+                continue
+
+                datum = discretizedDataMetricsDF.iloc[i,:]
                 state = self.makeIntoState(datum,newpos)
-                prevAction = action
                 action = self.QLearner.query(state,r)
 
                 robopos = action
                 steps += 1
-        # print iteration, "," , cumulativeRewards
-            # print dfTrades
 
     def makeIntoState(self,data,currentPos):
-        # print "problem causers"
-        # print currentPos
-        # print data
         dataStr = str(int(currentPos))
-        dataStr+=str(int(data.iloc[0]))
-
+        dataStr += str(int(data.iloc[0]))
 
         dataStr+=str(int(data.iloc[1]))
         dataStr+=str(int(data.iloc[2]))
 
-
-        # dataStr = str(int(currentPos))+ str(int(data.iloc[0]))+ str(int(data.iloc[1])) + str(int(data.iloc[2]))
-        # print "franken string"
-        # print dataStr
         dataStr = int(dataStr)
+
+        #Hash to the number of possible states.
         dataStr = dataStr% 250
 
         return dataStr
@@ -353,28 +322,26 @@ class StrategyLearner(object):
         # print df
         return df
 
+
     def discretize(self,data):
-        dataDF= pd.DataFrame(data)
-        dataDF= dataDF.ix[1:,:]
-        # print dataDF
-        self.thresholds0 = pd.qcut(dataDF.ix[:,0],10,labels=False,retbins=True)
-        self.thresholds1 = pd.qcut(dataDF.ix[:,1],10,labels=False,retbins=True)
-        self.thresholds2 = pd.qcut(dataDF.ix[:,2],10,labels=False,retbins=True)
+        dataFrame= pd.DataFrame(data)
+        dataFrame= dataFrame.ix[1:,:]
 
-        # "tresholds 1!!"
-        # print self.thresholds0[1]
+        #discretize the columns of the dataframe into 10 buckets.
+        self.thresholds0 = pd.qcut(dataFrame.ix[:,0],10,labels=False,retbins=True)
+        self.thresholds1 = pd.qcut(dataFrame.ix[:,1],10,labels=False,retbins=True)
+        self.thresholds2 = pd.qcut(dataFrame.ix[:,2],10,labels=False,retbins=True)
 
+        #convert the thresholds into their own dataframes
         thresholds0DF= pd.DataFrame(self.thresholds0[0])
         thresholds1DF= pd.DataFrame(self.thresholds1[0])
         thresholds2DF= pd.DataFrame(self.thresholds2[0])
 
-
         allDF = thresholds0DF.join(thresholds1DF, how ='inner')
         allDF = allDF.join(thresholds2DF, how = "inner")
-        # allDF = allDF.ix[1:,:]
-        # print allDF
 
         return allDF
+
     #Gets momentum, volatility, spy momentum, and bb values.  puts them into a single ndarray.  also puts averages and
     # standard deviations into a stats list variable for use later in normalization
     def setUp(self,dates,symbols):
@@ -474,11 +441,9 @@ class StrategyLearner(object):
 
     def movebot(self,oldpos,a):
         #a == 0 means hold, 1 means buy
-
-        if a ==oldpos:
-            pass
-        else:
+        if a !=oldpos:
             oldpos = a
+
         newpos = oldpos
         return newpos
 
@@ -646,5 +611,5 @@ class StrategyLearner(object):
         return portfolio_val
 
 learner = sl.StrategyLearner(verbose = False) # constructor
-learner.addEvidence(symbol = "IBM", sd=dt.datetime(2008,1,1), ed=dt.datetime(2009,1,1), sv = 10000) # training step
+learner.addEvidence(symbol = "IBM", startDate=dt.datetime(2008,1,1), endDate=dt.datetime(2009,1,1), sv = 10000) # training step
 df_trades = learner.testPolicy(symbol = "IBM", sd=dt.datetime(2009,1,1), ed=dt.datetime(2010,1,1), sv = 10000) # testing step
