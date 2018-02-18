@@ -34,8 +34,8 @@ def test_code(verb = True):
     if verb: print prices
 
     # test the learner
-    df_trades = learner.testPolicy(symbol = sym, sd = stdate, \
-        ed = enddate, sv = 10000)
+    df_trades = learner.testPolicy(symbol = sym, startDate= stdate, \
+        endDate= enddate, sv = 10000)
 
     # a few sanity checks
     # df_trades should be a single column DataFrame (not a series)

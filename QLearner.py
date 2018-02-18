@@ -23,8 +23,8 @@ class QLearner(object):
         self.q = np.random.uniform(-1.0,1.0,(num_states,num_actions))
         self.alpha = alpha
         self.gamma = gamma
-        self.rar = rar
-        self.radr = radr
+        self.RandomActionRate = rar
+        self.RandomActionDecayRate = radr
         self.dyna = dyna
 
         self.R = np.ones((num_states,num_actions))
@@ -43,9 +43,8 @@ class QLearner(object):
         if self.verbose: print "s =", s,"a =",action
         maximums = np.argmax(self.q,axis=1)
         someNum = np.random.uniform()
-        # print "somenum, self.rar"
-        # print someNum, self.rar
-        if someNum < (self.rar):
+
+        if someNum < (self.RandomActionRate):
             # print "do seomthing random"
             self.a= action
 
@@ -87,12 +86,12 @@ class QLearner(object):
         # print maximums
         # print "self.q *******"
         # print self.q
-        if someNum < (self.rar):
+        if someNum < (self.RandomActionRate):
             pass #because action is already set to something random
 
         else:
             action = maximums[s_prime]
-        self.rar = self.rar*self.radr
+        self.RandomActionRate = self.RandomActionRate*self.RandomActionDecayRate
         experienceTuple = (self.s,self.a,s_prime,r)
 
         # print "first term"
