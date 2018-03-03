@@ -98,7 +98,7 @@ class StrategyLearner(object):
 
         return dataStr
 
-    def testPolicy(self,symbol = "IBM", startDate=dt.datetime(2007,12,31), endDate=dt.datetime(2009,12,31), sv = 10000):
+    def testPolicy(self,symbol = "IBM", startDate=dt.datetime(2007,12,31), endDate=dt.datetime(2009,12,31), sv = 10000, isPortfolio = True):
 
         self.QLearner.RandomActionRate = 0
         dates = pd.date_range(startDate, endDate)
@@ -211,8 +211,10 @@ class StrategyLearner(object):
 
             robopos = action
             steps += 1
-
-        return dfTrades
+        if (isPortfolio):
+            return portfolio
+        else:
+            return dfTrades
 
     def discretizeTest(self,data):
         data = data[1:,:]
@@ -358,9 +360,13 @@ class StrategyLearner(object):
             else:
                 if originalDF.ix[i,0]==0:
                     break
-            ordersDF.ix[originalDF.ix[i,0],0] = originalDF.ix[i,1]
-            ordersDF.ix[originalDF.ix[i,0],1] = originalDF.ix[i,2]
-            ordersDF.ix[originalDF.ix[i,0],2] = originalDF.ix[i,3]
+            # print  "inner left"
+            # print originalDF.ix[i,0]
+            # print "outer left"
+            # print ordersDF.ix[originalDF.ix[i,0],0]
+            ordersDF.ix[int(originalDF.ix[i,0]),0] = originalDF.ix[i,1]
+            ordersDF.ix[int(originalDF.ix[i,0]),1] = originalDF.ix[i,2]
+            ordersDF.ix[int(originalDF.ix[i,0]),2] = int(originalDF.ix[i,3])
 
         ordersDF=ordersDF.dropna(axis=0)
 
@@ -431,6 +437,22 @@ class StrategyLearner(object):
 
         return portfolio_val
 
+    def showChart(self, portfolio,dates,symbol):
+        print portfolio
+        portvals=self.compute_portvals(portfolio,dates,symbol,start_val = 1)
+        portvals.columns = ['Out Sample Portfolio']
+
+        stock = get_data(["IBM"],dates,addSPY=False)
+        stock = stock.dropna()
+
+        stock = (stock / stock.ix[0,:])*1000000
+        axTest = stock.plot(title = "Daily Portfolio Value-In Sample", mark_right = False)
+
+        portvals.plot(label = 'Out Sample Portfolio',ax=axTest,color = 'r')
+
+        axTest.set_xlabel("Date")
+        axTest.set_ylabel("Normalized price")
+        plt.show()
 learner = sl.StrategyLearner(verbose = False) # constructor
 learner.addEvidence(symbol = "IBM", startDate=dt.datetime(2008,1,1), endDate=dt.datetime(2009,1,1), sv = 10000) # training step
 df_trades = learner.testPolicy(symbol = "IBM", startDate=dt.datetime(2009,1,1), endDate=dt.datetime(2010,1,1), sv = 10000) # testing step

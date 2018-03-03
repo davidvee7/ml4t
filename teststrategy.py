@@ -34,8 +34,10 @@ def test_code(verb = True):
     if verb: print prices
 
     # test the learner and put results into a dataframe of trades to make per date
-    df_trades = learner.testPolicy(symbol = sym, startDate= stdate, \
-        endDate= enddate)
+    portfolio = learner.testPolicy(symbol = sym, startDate= stdate, \
+        endDate= enddate,isPortfolio=True)
+
+    learner.showChart(portfolio,dates,"IBM")
 
     # a few sanity checks
     # df_trades should be a single column DataFrame (not a series)
@@ -50,7 +52,6 @@ def test_code(verb = True):
     # if tradecheck.sum(axis=0) > 0:
     #     print "Returned result violoates holding restrictions (more than 100 shares)"
 
-    if verb: print df_trades
 
     #learner.compute_portvals(df_trades,dates,"IBM")
 
