@@ -21,9 +21,14 @@ class QLearner(object):
 
         #from me
         self.q = np.random.uniform(-1.0,1.0,(num_states,num_actions))
+        #Alpha is the learning rate, which falls between 0 and 1 inclusively.  A learning rate of 1 makes the learner only
+        # use the most recent info, while a  learning rate of 0 makes the learner forget everything.
         self.alpha = alpha
+        #Gamma is the importance of future rewards.  Towards 0 is short sightedness, while towards 1 is long sightedness
         self.gamma = gamma
+        #How often a random action will be chosen.
         self.RandomActionRate = rar
+        #How quickly the learner will slow down or stop doing random actions.
         self.RandomActionDecayRate = radr
         self.dyna = dyna
 
@@ -42,19 +47,15 @@ class QLearner(object):
         action = rand.randint(0, self.num_actions-1)
         if self.verbose: print "s =", s,"a =",action
         maximums = np.argmax(self.q,axis=1)
+
         someNum = np.random.uniform()
-
         if someNum < (self.RandomActionRate):
-            # print "do seomthing random"
+            # print "do something random"
             self.a= action
-
             return action
-
         else:
-            # print "nah just playin"
             action = maximums[s]
         self.a= action
-
 
         return action
 
@@ -78,42 +79,30 @@ class QLearner(object):
         lastAction = self.a
         lastState = self.s
         action = rand.randint(0, self.num_actions-1)
+
         if self.verbose: print "s =", s_prime,"a =",action,"r =",r
-        #from me
+
         someNum = np.random.uniform()
         maximums = np.argmax(self.q,axis=1)
-        # print "maximus"
-        # print maximums
-        # print "self.q *******"
-        # print self.q
+
         if someNum < (self.RandomActionRate):
             pass #because action is already set to something random
-
         else:
             action = maximums[s_prime]
+
+        #Decay the RandomActionRate.
         self.RandomActionRate = self.RandomActionRate*self.RandomActionDecayRate
-        experienceTuple = (self.s,self.a,s_prime,r)
 
-        # print "first term"
-        # print self.q[self.s,self.a]
-        # print "second term"
-        # print self.q[s_prime,maximums[s_prime]]
-        # print "what's r"
-        # print r
-        # print "sprime"
-        # print s_prime
-        # print "max sprime"
-        # print maximums[s_prime]
-
+        #(1-self.alpha)*self.q[self.s,self.a] == how much you want previous experiences to count
+        #self.alpha*(r+ self.gamma*self.q[s_prime,maximums[s_prime]]) == how much this reward and future rewards will get you
         self.q[self.s,self.a]= (1-self.alpha)*self.q[self.s,self.a] + \
             self.alpha*(r+ self.gamma*self.q[s_prime,maximums[s_prime]])
         self.a= action
         self.s= s_prime
+
+        #So the q learner can remember what rewards are associated with taken a given action in a given state
         self.experienceTuples.append((lastState,lastAction,s_prime,r))
 
-        #DYNA
-        # self.Tc[lastState,lastAction,s_prime] += 1
-        # self.T[lastState,lastAction,:]=self.Tc[lastState,lastAction,:] /self.Tc[lastState,lastAction,:].sum()
         self.R[lastState,lastAction] = (1-self.alpha) * self.R[lastState,lastAction] + self.alpha*r
 
         for i in range(self.dyna):
