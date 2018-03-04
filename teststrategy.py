@@ -37,21 +37,7 @@ def test_code(verb = True):
     portfolio = learner.testPolicy(symbol = sym, startDate= stdate, \
         endDate= enddate,isPortfolio=True)
 
-    learner.showChart(portfolio,dates,"IBM")
-
-    # a few sanity checks
-    # df_trades should be a single column DataFrame (not a series)
-    # including only the values 100, 0, -100
-    # if isinstance(df_trades, pd.DataFrame) == False:
-    #     print "Returned result is not a DataFrame"
-    # if prices.shape != df_trades.shape:
-    #     print "Returned result is not the right shape"
-    # tradecheck = abs(df_trades.cumsum()).values
-    # tradecheck[tradecheck<=100] = 0
-    # tradecheck[tradecheck>0] = 1
-    # if tradecheck.sum(axis=0) > 0:
-    #     print "Returned result violoates holding restrictions (more than 100 shares)"
-
+    learner.showChart(portfolio,dates,"IBM",1000000)
 
     #learner.compute_portvals(df_trades,dates,"IBM")
 
