@@ -480,7 +480,7 @@ class StrategyLearner(object):
         print "time to plot"
         plt.plot(stock.index,portvals,label = "Portvals")
         plt.plot(stock.index,stock.iloc[:,0],label = "Ibm")
-
+        plt.legend(loc='upper left')
         # portvals.plot(label = 'Out Sample Portfolio',ax=axTest,color = 'r')
 
         # axTest.set_xlabel("Date")
