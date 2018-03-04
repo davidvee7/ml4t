@@ -15,14 +15,14 @@ def test_code(verb = True):
     # set parameters for training the learner
     sym = "GOOG"
     stdate =dt.datetime(2008,1,1)
-    enddate =dt.datetime(2008,1,15) # just a few days for "shake out"
+    enddate =dt.datetime(2008,6,15) # just a few days for "shake out"
 
     # train the learner
     learner.addEvidence(symbol = sym, startDate= stdate, \
         endDate= enddate, sv = 10000)
 
     # set parameters for testing
-    sym = "IBM"
+    sym = "SH"
     stdate =dt.datetime(2009,1,1)
     enddate =dt.datetime(2009,5,15)
 
@@ -37,7 +37,7 @@ def test_code(verb = True):
     portfolio = learner.testPolicy(symbol = sym, startDate= stdate, \
         endDate= enddate,isPortfolio=True)
 
-    learner.showChart(portfolio,dates,"IBM",1000000)
+    learner.showChart(portfolio,dates,sym,1000000)
 
     #learner.compute_portvals(df_trades,dates,"IBM")
 

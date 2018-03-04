@@ -165,14 +165,14 @@ class StrategyLearner(object):
             elif robopos == 1 and action == 2:
                 dfTrades.iloc[i] = -200
                 portfolio.loc[portfolioCount,0] = i
-                portfolio.loc[portfolioCount,1] = "IBM"
+                portfolio.loc[portfolioCount,1] = symbol
                 portfolio.loc[portfolioCount,2] = "SELL"
                 portfolio.loc[portfolioCount,3] = -200
                 portfolioCount+=1
             elif robopos == 1 and action == 0:
                 dfTrades.iloc[i] = -100
                 portfolio.loc[portfolioCount,0] = i
-                portfolio.loc[portfolioCount,1] = "IBM"
+                portfolio.loc[portfolioCount,1] = symbol
                 portfolio.loc[portfolioCount,2] = "SELL"
                 portfolio.loc[portfolioCount,3] = -100
                 portfolioCount+=1
@@ -180,7 +180,7 @@ class StrategyLearner(object):
             elif robopos == 2 and action == 1:
                 dfTrades.iloc[i] = 200
                 portfolio.loc[portfolioCount,0] = i
-                portfolio.loc[portfolioCount,1] = "IBM"
+                portfolio.loc[portfolioCount,1] = symbol
                 portfolio.loc[portfolioCount,2] = "BUY"
                 portfolio.loc[portfolioCount,3] = 200
                 portfolioCount+=1
@@ -188,7 +188,7 @@ class StrategyLearner(object):
             elif robopos == 2 and action == 0:
                 dfTrades.iloc[i] = 100
                 portfolio.loc[portfolioCount,0] = i
-                portfolio.loc[portfolioCount,1] = "IBM"
+                portfolio.loc[portfolioCount,1] = symbol
                 portfolio.loc[portfolioCount,2] = "BUY"
                 portfolio.loc[portfolioCount,3] = 100
                 portfolioCount+=1
@@ -196,7 +196,7 @@ class StrategyLearner(object):
             elif robopos == 0 and action == 1:
                 dfTrades.iloc[i] = 100
                 portfolio.loc[portfolioCount,0] = i
-                portfolio.loc[portfolioCount,1] = "IBM"
+                portfolio.loc[portfolioCount,1] = symbol
                 portfolio.loc[portfolioCount,2] = "BUY"
                 portfolio.loc[portfolioCount,3] = 100
                 portfolioCount+=1
@@ -204,7 +204,7 @@ class StrategyLearner(object):
             elif robopos == 0 and action == 2:
                 dfTrades.iloc[i] = -100
                 portfolio.loc[portfolioCount,0] = i
-                portfolio.loc[portfolioCount,1] = "IBM"
+                portfolio.loc[portfolioCount,1] = symbol
                 portfolio.loc[portfolioCount,2] = "SELL"
                 portfolio.loc[portfolioCount,3] = -100
                 portfolioCount+=1
@@ -343,28 +343,15 @@ class StrategyLearner(object):
         newpos = oldpos
         return newpos
 
-    def compute_portvals(self,ordersDF,dateRange,symbol,start_val = 1):
+    def computeDailyPortfolioValues(self,ordersDF,dateRange,symbol,start_val = 1):
         exceedsLeverage = True
         exceededDate = None
 
-        originalDF = ordersDF.copy()
         prices_all = get_data([symbol], dateRange)
+        startDate = prices_all.index.min()
+        endDate = prices_all.index.max()
 
-        ordersDF = pd.DataFrame(index=prices_all.index,data=ordersDF,columns = ordersDF.columns)
-        ordersDF=ordersDF.drop(ordersDF.columns[[0]],axis=1)
-        ordersDF.columns = ['Symbol','Order','Shares']
-
-        for i in range(0,originalDF.shape[0]):
-            if i== 0:
-                pass
-            else:
-                if originalDF.ix[i,0]==0:
-                    break
-            ordersDF.ix[int(originalDF.ix[i,0]),0] = originalDF.ix[i,1]
-            ordersDF.ix[int(originalDF.ix[i,0]),1] = originalDF.ix[i,2]
-            ordersDF.ix[int(originalDF.ix[i,0]),2] = int(originalDF.ix[i,3])
-
-        ordersDF=ordersDF.dropna(axis=0)
+        ordersDF = self.prepareOrdersDF(ordersDF, prices_all)
 
         while exceedsLeverage==True:
             if exceededDate != None:
@@ -376,9 +363,6 @@ class StrategyLearner(object):
             syms = pd.unique(ordersDF.Symbol.ravel())
 
             syms = syms.tolist()
-
-            startDate = prices_all.index.min()
-            endDate = prices_all.index.max()
 
             # Read in adjusted closing prices for given symbols, date range
             dates = pd.date_range(startDate, endDate)
@@ -409,7 +393,7 @@ class StrategyLearner(object):
             dfHoldings[:] = dfTrades.cumsum()
             dfHoldings.ix[:,-1]= dfHoldings.ix[:,-1] + 1000000
 
-            dfValues = dfHoldings* dfPrices
+            dfValues = dfHoldings * dfPrices
 
             leverage = dfValues.copy()
 
@@ -433,19 +417,37 @@ class StrategyLearner(object):
 
         return portfolio_val
 
-    def showChart(self, portfolio,dates,symbol,startingPortfolioValue):
-        portvals=self.compute_portvals(portfolio,dates,symbol,start_val = 1)
+    #remove the index of the order (the ith day since startdate) from the orders data frame, and remove NA
+    def prepareOrdersDF(self, ordersDF, prices_all):
+        originalDF = ordersDF.copy()
+        ordersDF = pd.DataFrame(index=prices_all.index, data=ordersDF, columns=ordersDF.columns)
+        ordersDF = ordersDF.drop(ordersDF.columns[[0]], axis=1)
+        ordersDF.columns = ['Symbol', 'Order', 'Shares']
+        for i in range(0, originalDF.shape[0]):
+            if i == 0:
+                pass
+            else:
+                if originalDF.ix[i, 0] == 0:
+                    break
+            ordersDF.ix[int(originalDF.ix[i, 0]), 0] = originalDF.ix[i, 1]
+            ordersDF.ix[int(originalDF.ix[i, 0]), 1] = originalDF.ix[i, 2]
+            ordersDF.ix[int(originalDF.ix[i, 0]), 2] = int(originalDF.ix[i, 3])
+        ordersDF=ordersDF.dropna(axis=0)
 
-        stock = get_data(["IBM"],dates,addSPY=False)
+        return ordersDF
+
+    def showChart(self, portfolio,dates,symbol,startingPortfolioValue):
+        print portfolio
+
+        portvals=self.computeDailyPortfolioValues(portfolio,dates,symbol,start_val = 1)
+
+        stock = get_data([symbol],dates,addSPY=False)
         stock = stock.dropna()
 
         stock = (stock / stock.ix[0,:])*startingPortfolioValue
 
         plt.plot(stock.index,portvals,label = "Portvals")
-        plt.plot(stock.index,stock.iloc[:,0],label = "Ibm")
+        plt.plot(stock.index,stock.iloc[:,0],label = symbol)
         plt.legend(loc='upper left')
 
         plt.show()
-learner = sl.StrategyLearner(verbose = False) # constructor
-learner.addEvidence(symbol = "IBM", startDate=dt.datetime(2008,1,1), endDate=dt.datetime(2009,1,1), sv = 10000) # training step
-df_trades = learner.testPolicy(symbol = "IBM", startDate=dt.datetime(2009,1,1), endDate=dt.datetime(2010,1,1), sv = 10000) # testing step
