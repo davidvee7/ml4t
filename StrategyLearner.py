@@ -438,20 +438,53 @@ class StrategyLearner(object):
         return portfolio_val
 
     def showChart(self, portfolio,dates,symbol):
+        print "portfolio below"
         print portfolio
         portvals=self.compute_portvals(portfolio,dates,symbol,start_val = 1)
-        portvals.columns = ['Out Sample Portfolio']
+        print "portvals"
+        print portvals
+        #portvals.columns = ['Out Sample Portfolio']
 
         stock = get_data(["IBM"],dates,addSPY=False)
         stock = stock.dropna()
 
         stock = (stock / stock.ix[0,:])*1000000
-        axTest = stock.plot(title = "Daily Portfolio Value-In Sample", mark_right = False)
+        # axTest = stock.plot(title = "Daily Portfolio Value-In Sample", mark_right = False)
 
-        portvals.plot(label = 'Out Sample Portfolio',ax=axTest,color = 'r')
+        print 'stock below'
+        print stock
+        print "shapes of protvals then stock"
+        print portvals.shape
+        print stock.shape
 
-        axTest.set_xlabel("Date")
-        axTest.set_ylabel("Normalized price")
+        print "type of portvals then stock"
+        print type(portvals)
+        print type(stock)
+
+        # pd.to_numeric(stock.columns[0])
+
+        # stock= stock.assign(portvals = portvals.values)
+        # portvals['stock'] = stock
+        print 'stock after adding portvals'
+        print stock
+
+        # stock = stock.convert_objects(convert_numeric=True)#.dtypes
+
+
+        print "type of ibm column"
+        print type(stock.columns[0])
+
+        print "stocks again"
+        print stock
+
+        print "time to plot"
+        plt.plot(stock.index,portvals,label = "Portvals")
+        plt.plot(stock.index,stock.iloc[:,0],label = "Ibm")
+
+        # portvals.plot(label = 'Out Sample Portfolio',ax=axTest,color = 'r')
+
+        # axTest.set_xlabel("Date")
+        # axTest.set_ylabel("Normalized price")
         plt.show()
 learner = sl.StrategyLearner(verbose = False) # constructor
 learner.addEvidence(symbol = "IBM", startDate=dt.datetime(2008,1,1), endDate=dt.datetime(2009,1,1), sv = 10000) # training step
