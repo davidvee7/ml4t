@@ -351,7 +351,7 @@ class StrategyLearner(object):
         startDate = prices_all.index.min()
         endDate = prices_all.index.max()
 
-        ordersDF = self.prepareOrdersDF(ordersDF, prices_all)
+        ordersDF = self.convertIndicesToDates(ordersDF, prices_all)
 
         while exceedsLeverage==True:
             if exceededDate != None:
@@ -417,21 +417,32 @@ class StrategyLearner(object):
 
         return portfolio_val
 
-    #remove the index of the order (the ith day since startdate) from the orders data frame, and remove NA
-    def prepareOrdersDF(self, ordersDF, prices_all):
+    #Converts numbered indices to dates within a trading period.
+    #Takes a dataframe of trades.  So each row is a trade, with column 0 indicating
+    #the trade occurs on the ith day within the trading period, column 1 indicating the symbol, column
+    #2 indicating the action, and column 3 indicating the quantity of the action.
+    #So if a row is [5, SH, BUY, -200], it means on the fifth day of the trading period, sell 200 shares of
+    #SH.
+    #TODO refactor this method to return a series of dates rather than a dataframe.  
+    def convertIndicesToDates(self, ordersDF, prices_all):
+
         originalDF = ordersDF.copy()
+
         ordersDF = pd.DataFrame(index=prices_all.index, data=ordersDF, columns=ordersDF.columns)
         ordersDF = ordersDF.drop(ordersDF.columns[[0]], axis=1)
         ordersDF.columns = ['Symbol', 'Order', 'Shares']
+
         for i in range(0, originalDF.shape[0]):
             if i == 0:
                 pass
             else:
+                #once originalDF.ix[i, 0] == 0, that means there are no more orders.
                 if originalDF.ix[i, 0] == 0:
                     break
             ordersDF.ix[int(originalDF.ix[i, 0]), 0] = originalDF.ix[i, 1]
             ordersDF.ix[int(originalDF.ix[i, 0]), 1] = originalDF.ix[i, 2]
             ordersDF.ix[int(originalDF.ix[i, 0]), 2] = int(originalDF.ix[i, 3])
+
         ordersDF=ordersDF.dropna(axis=0)
 
         return ordersDF
