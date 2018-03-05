@@ -344,7 +344,7 @@ class StrategyLearner(object):
         return newpos
 
     def computeDailyPortfolioValues(self,ordersDataFrame,dateRange,symbol,start_val = 1):
-        exceedsLeverage = True
+        exceedsLeverage = False
         exceededDate = None
 
         prices_all = get_data([symbol], dateRange)
@@ -353,7 +353,8 @@ class StrategyLearner(object):
 
         ordersDataFrame = self.convertIndicesToDates(ordersDataFrame, prices_all)
 
-        while exceedsLeverage == True:
+        #If leverage is exceeded, then keep looping until it doesn't exceed leverage.
+        while True:
             if exceededDate != None:
                 if exceededDate in ordersDataFrame:
                     if ordersDataFrame.ix[exceededDate] is not None:
@@ -362,7 +363,6 @@ class StrategyLearner(object):
                     exceedsLeverage = False
 
             # Read in adjusted closing prices for given symbols, date range
-            dates = pd.date_range(startDate, endDate)
             prices_all.loc[:,'Cash']=pd.Series(1,index=prices_all.index)
 
             #dfTrades is initialized with the prices dataframe, but will eventually be filled with trades.
@@ -398,6 +398,10 @@ class StrategyLearner(object):
 
             exceededDate, exceedsLeverage = self.getLeverageInfo(dfValues, exceededDate, exceedsLeverage)
 
+            if exceedsLeverage == True:
+                continue
+            else:
+                break
         portfolio_val = dfValues.sum(axis=1)
 
         return portfolio_val
@@ -412,7 +416,7 @@ class StrategyLearner(object):
         exceededLeverage = leverage[np.abs(leverage.leverage) > 2.0]
         if exceededLeverage.shape[0] > 0:
             exceededDate = exceededLeverage.index[0]
-
+            exceedsLeverage = True
         else:
             exceedsLeverage = False
         return exceededDate, exceedsLeverage
