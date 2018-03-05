@@ -343,7 +343,7 @@ class StrategyLearner(object):
         newpos = oldpos
         return newpos
 
-    def computeDailyPortfolioValues(self,ordersDF,dateRange,symbol,start_val = 1):
+    def computeDailyPortfolioValues(self,ordersDataFrame,dateRange,symbol,start_val = 1):
         exceedsLeverage = True
         exceededDate = None
 
@@ -351,71 +351,71 @@ class StrategyLearner(object):
         startDate = prices_all.index.min()
         endDate = prices_all.index.max()
 
-        ordersDF = self.convertIndicesToDates(ordersDF, prices_all)
+        ordersDataFrame = self.convertIndicesToDates(ordersDataFrame, prices_all)
 
-        while exceedsLeverage==True:
+        while exceedsLeverage == True:
             if exceededDate != None:
-                if exceededDate in ordersDF:
-                    if ordersDF.ix[exceededDate] is not None:
-                        ordersDF.ix[exceededDate, 'Shares']=0
+                if exceededDate in ordersDataFrame:
+                    if ordersDataFrame.ix[exceededDate] is not None:
+                        ordersDataFrame.ix[exceededDate, 'Shares']=0
                 else:
                     exceedsLeverage = False
-            syms = pd.unique(ordersDF.Symbol.ravel())
-
-            syms = syms.tolist()
 
             # Read in adjusted closing prices for given symbols, date range
             dates = pd.date_range(startDate, endDate)
-            dfPrices = get_data(syms,dates,True)
-            dfPrices.loc[:,'Cash']=pd.Series(1,index=dfPrices.index)
-            dfTrades = dfPrices.copy()
+            prices_all.loc[:,'Cash']=pd.Series(1,index=prices_all.index)
+
+            #dfTrades is initialized with the prices dataframe, but will eventually be filled with trades.
+            dfTrades = prices_all.copy()
             dfTrades.ix[:] = 0
 
-            for index, row in ordersDF.iterrows():
+            for index, row in ordersDataFrame.iterrows():
                 if row['Order'] == "BUY":
                     dfTrades.loc[pd.Timestamp.date(index), row['Symbol']] = float(dfTrades.loc[pd.Timestamp.date(index), row['Symbol']])+ float(row['Shares'])
-                    dfTrades.loc[pd.Timestamp.date(index), 'Cash'] = float(dfTrades.loc[pd.Timestamp.date(index), 'Cash']) + float(row['Shares'] *-1 * dfPrices.loc[pd.Timestamp.date(index),row['Symbol']])
+                    dfTrades.loc[pd.Timestamp.date(index), 'Cash'] = float(dfTrades.loc[pd.Timestamp.date(index), 'Cash']) + float(row['Shares'] *-1 * prices_all.loc[pd.Timestamp.date(index),row['Symbol']])
 
                 elif row['Order']== "SELL":
                     dfTrades.loc[pd.Timestamp.date(index), row['Symbol']] =float(dfTrades.loc[pd.Timestamp.date(index), row['Symbol']])+ (-1 * float(row['Shares']))
-                    dfTrades.loc[pd.Timestamp.date(index), 'Cash'] = float(dfTrades.loc[pd.Timestamp.date(index), 'Cash']) + float(row['Shares'])  * float(dfPrices.loc[pd.Timestamp.date(index),row['Symbol']])
-
+                    dfTrades.loc[pd.Timestamp.date(index), 'Cash'] = float(dfTrades.loc[pd.Timestamp.date(index), 'Cash']) + float(row['Shares'])  * float(prices_all.loc[pd.Timestamp.date(index),row['Symbol']])
+            #After the above for loop, dfTrades now contains holdings on everyday of the time period.
             dfHoldings = dfTrades.copy()
 
+            #sets everything in dfHoldings to 0
             dfHoldings.ix[:] = 0
 
             #first row of dfHOldings = any shares bought on day 1. cash = start value - change in cash on day 1
             #all other rows of dfHoldings = shares from current day-1 + any change in current day
             for i in range (dfHoldings.shape[1]):
                 dfHoldings.ix[0,i] = dfTrades.ix[0,i]
+
             dfHoldings.ix[0, dfHoldings.shape[1]-1] = start_val+float(dfTrades.ix[0,dfTrades.shape[1]-1])
 
             dfHoldings[:] = dfTrades.cumsum()
+
             dfHoldings.ix[:,-1]= dfHoldings.ix[:,-1] + 1000000
 
-            dfValues = dfHoldings * dfPrices
+            dfValues = dfHoldings * prices_all
 
-            leverage = dfValues.copy()
-
-            absoluteLeverage = dfValues.copy()
-            allColumnsExceptCash = list(dfValues)
-            allColumnsExceptCash.remove('Cash')
-
-            absoluteLeverage.ix[:] = np.abs(absoluteLeverage.ix[:])
-
-            leverage['leverage'] =  absoluteLeverage[allColumnsExceptCash].sum(axis=1)/leverage.sum(axis=1)
-
-            exceededLeverage= leverage[np.abs(leverage.leverage)>2.0]
-
-            if exceededLeverage.shape[0]>0:
-                exceededDate = exceededLeverage.index[0]
-
-            else:
-                exceedsLeverage = False
+            exceededDate, exceedsLeverage = self.getLeverageInfo(dfValues, exceededDate, exceedsLeverage)
 
         portfolio_val = dfValues.sum(axis=1)
 
         return portfolio_val
+
+    def getLeverageInfo(self, dfValues, exceededDate, exceedsLeverage):
+        leverage = dfValues.copy()
+        absoluteLeverage = dfValues.copy()
+        allColumnsExceptCash = list(dfValues)
+        allColumnsExceptCash.remove('Cash')
+        absoluteLeverage.ix[:] = np.abs(absoluteLeverage.ix[:])
+        leverage['leverage'] = absoluteLeverage[allColumnsExceptCash].sum(axis=1) / leverage.sum(axis=1)
+        exceededLeverage = leverage[np.abs(leverage.leverage) > 2.0]
+        if exceededLeverage.shape[0] > 0:
+            exceededDate = exceededLeverage.index[0]
+
+        else:
+            exceedsLeverage = False
+        return exceededDate, exceedsLeverage
 
     #Converts numbered indices to dates within a trading period.
     #Takes a dataframe of trades.  So each row is a trade, with column 0 indicating
@@ -423,7 +423,7 @@ class StrategyLearner(object):
     #2 indicating the action, and column 3 indicating the quantity of the action.
     #So if a row is [5, SH, BUY, -200], it means on the fifth day of the trading period, sell 200 shares of
     #SH.
-    #TODO refactor this method to return a series of dates rather than a dataframe.  
+    #TODO refactor this method to return a series of dates rather than a dataframe.
     def convertIndicesToDates(self, ordersDF, prices_all):
 
         originalDF = ordersDF.copy()
