@@ -346,11 +346,7 @@ class StrategyLearner(object):
     def computeDailyPortfolioValues(self,ordersDataFrame,dateRange,symbol,start_val = 1):
         exceedsLeverage = False
         exceededDate = None
-
         prices_all = get_data([symbol], dateRange)
-        startDate = prices_all.index.min()
-        endDate = prices_all.index.max()
-
         ordersDataFrame = self.convertIndicesToDates(ordersDataFrame, prices_all)
 
         #If leverage is exceeded, then keep looping until it doesn't exceed leverage.
@@ -371,7 +367,22 @@ class StrategyLearner(object):
 
             for index, row in ordersDataFrame.iterrows():
                 if row['Order'] == "BUY":
-                    dfTrades.loc[pd.Timestamp.date(index), row['Symbol']] = float(dfTrades.loc[pd.Timestamp.date(index), row['Symbol']])+ float(row['Shares'])
+                    # print 'float(dfTrades.loc[pd.Timestamp.date(index), row[Symbol]])+ float(row[Shares])'
+                    # print float(dfTrades.loc[pd.Timestamp.date(index), row['Symbol']])+ float(row['Shares'])
+                    # print 'float(dfTrades.loc[pd.Timestamp.date(index), Cash]) '
+                    # print float(dfTrades.loc[pd.Timestamp.date(index), 'Cash'])
+                    # print 'float(row[Shares] *-1 * prices_all.loc[pd.Timestamp.date(index),row[Symbol]])'
+                    # print float(row['Shares'] *-1 * prices_all.loc[pd.Timestamp.date(index),row['Symbol']])
+                    # print 'row[Symbol]'
+                    # print row['Symbol']
+                    # print 'print row[Shares]'
+                    # print float(row['Shares'])
+                    # print 'float(dfTrades.loc[pd.Timestamp.date(index), row[Symbol]])'
+                    # print float(dfTrades.loc[pd.Timestamp.date(index), row['Symbol']])
+                    #dfTrades[date,symbol] = (whatever is in dfTrades, which should be 0 ) + sharesOrdered
+                    if (float(dfTrades.loc[pd.Timestamp.date(index), row['Symbol']]))!= 0:
+                        print ' tell me'
+                    dfTrades.loc[pd.Timestamp.date(index), row['Symbol']] = float(row['Shares'])
                     dfTrades.loc[pd.Timestamp.date(index), 'Cash'] = float(dfTrades.loc[pd.Timestamp.date(index), 'Cash']) + float(row['Shares'] *-1 * prices_all.loc[pd.Timestamp.date(index),row['Symbol']])
 
                 elif row['Order']== "SELL":
