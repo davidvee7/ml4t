@@ -110,73 +110,48 @@ class learner(object):
         plt.vlines(buys, ymin=ymin, ymax=ymax, color='g', label='Buys')
         plt.vlines(close, ymin=ymin, ymax=ymax, color='k', label='Exits')
         plt.vlines(shorts, ymin=ymin, ymax=ymax, color='r', label='Shorts')
+
         plt.show()
 
     def setUp(self,dates):
-        momentumDF, actual5DayChange, unalteredPrices = self.getMomentum(dates)
-        spyMomentum = self.getSPYMomentum(dates)
-        volatilityDF=self.getVolatility(dates)
+        FiveDayPriceChange, bollingerBandValues, momentumDF, stats, unalteredPrices, volatilityDF = self.calculateTrainingStats(
+            dates)
 
-        movingAverage= pd.rolling_mean(unalteredPrices, window = 3)
-        movingAverage= movingAverage.dropna()
-        bb_value = (unalteredPrices-movingAverage)/(2*volatilityDF)
-
-        stats = []
-
-        bbMean = bb_value.mean()
-        bbStd = bb_value.std()
-        bb_value = (bb_value-bbMean) / bbStd
-        momentumMean = momentumDF.mean()
-        momentumStd = momentumDF.std()
-        momentumDF = (momentumDF-momentumMean) / momentumStd
-        spyMean = spyMomentum.mean()
-        spyStd = spyMomentum.std()
-        spyDF = (spyMomentum-spyMean)/ spyStd
-        volatilityMean = volatilityDF.mean()
-        volatilityStd = volatilityDF.std()
-        volatilityDF = (volatilityDF-volatilityMean)/ volatilityStd
-
-        stats.append(momentumMean)
-        stats.append(momentumStd)
-        stats.append(volatilityMean)
-        stats.append(volatilityStd)
-        stats.append(bbMean)
-        stats.append(bbStd)
-
-        spyDF = spyDF[3:-3]
+        #shave off the NA's in the first three and last 3 rows.  Necessary because the stats
+        #are calculated on a rolling basis.
         momentumDF = momentumDF[3:-3]
         volatilityDF = volatilityDF[3:-3]
-        actual5DayChange = actual5DayChange[3:-3]
-        bb_value = bb_value[3:-3]
+        FiveDayPriceChange = FiveDayPriceChange[3:-3]
+        bollingerBandValues = bollingerBandValues[3:-3]
         unalteredPrices= unalteredPrices/unalteredPrices.ix[0,:]
         unalteredPrices = unalteredPrices[3:-3]
 
-        actual5DayChange = actual5DayChange+1
+        #Normalize fivedaypricechange
+        FiveDayPriceChange = FiveDayPriceChange+1
 
         allDF = np.ones((momentumDF.shape[0],4))
         allDF[:,0]= momentumDF['IBM']
         allDF[:,1]= volatilityDF['IBM']
-        allDF[:,2]= bb_value['IBM']
-        allDF[:,3]= actual5DayChange['IBM']
+        allDF[:,2]= bollingerBandValues['IBM']
+        allDF[:,3]= FiveDayPriceChange['IBM']
 
+        #The inputs
         trainX = allDF[:,0:-1]
+        #The outcome
         trainY = allDF[:,-1]
 
-        # print trainX
         # learner = lrl.LinRegLearner(verbose = True) # create a LinRegLearner
         learner = knn.KNNLearner(2,verbose = True) # create a knn learner
         learner.addEvidence(trainX, trainY) # train it
-        predYTrain = learner.query(trainX) # get the predictions        sy = sknn.fit(trainX, trainY).predict(testX)
+        predYTrainBasedOnTraining = learner.query(trainX) # get the predictions        sy = sknn.fit(trainX, trainY).predict(testX)
         # predYTest = learner.query(testX)
 
+        yPredictedDF = pd.DataFrame(predYTrainBasedOnTraining, index = FiveDayPriceChange.index)
 
-        #b3 predytrain is 972, future price df is 471
-        yPredDF = pd.DataFrame(predYTrain, index = actual5DayChange.index)
+        yPredTimesPriceDF= yPredictedDF.values*unalteredPrices
+        fiveDayPrices = FiveDayPriceChange.values* unalteredPrices
 
-        yPredXPriceDF= yPredDF.values*unalteredPrices
-        fiveDayPrices = actual5DayChange.values* unalteredPrices
-
-        yPredXPriceDF.columns = ['Predicted Y']
+        yPredTimesPriceDF.columns = ['Predicted Y']
         fiveDayPrices.columns = ['Y Train']
 
         symbols = ['IBM']
@@ -186,19 +161,48 @@ class learner(object):
 
         ax = unalteredPrices.plot(title="Y Train/Price/Pred Y", label = "Price",color ='b')
         fiveDayPrices.plot(label = "Y Train",ax=ax,color = 'r')
-        yPredXPriceDF.plot(label = "Predicted Y", ax=ax, color = "g")
+        yPredTimesPriceDF.plot(label = "Predicted Y", ax=ax, color = "g")
 
-        rmse = math.sqrt(((trainY - predYTrain) ** 2).sum()/trainY.shape[0])
-        # print "in sample rmse"
-        # print rmse
-        c = np.corrcoef(predYTrain, y=trainY)
-        # print "in sample corr: ", c[0,1]
+        # rmse = math.sqrt(((trainY - predYTrainBasedOnTraining) ** 2).sum()/trainY.shape[0])
+
+        # c = np.corrcoef(predYTrainBasedOnTraining, y=trainY)
+
         ax.set_xlabel("Time")
         ax.set_ylabel("Price")
 
         plt.show()
 
-        return learner,yPredXPriceDF,stats,unalteredPrices
+        return learner,yPredTimesPriceDF,stats,unalteredPrices
+
+    def calculateTrainingStats(self, dates):
+        momentumDF, FiveDayPriceChange, unalteredPrices = self.getMomentum(dates)
+        volatilityDF = self.getVolatility(dates)
+
+        movingAverage = pd.rolling_mean(unalteredPrices, window=3)
+        movingAverage = movingAverage.dropna()
+
+        bollingerBandValue = (unalteredPrices - movingAverage) / (2 * volatilityDF)
+        bollingerBandMean = bollingerBandValue.mean()
+        bollingerBandStandardDeviation = bollingerBandValue.std()
+        bollingerBandValue = (bollingerBandValue - bollingerBandMean) / bollingerBandStandardDeviation
+
+        momentumMean = momentumDF.mean()
+        momentumStd = momentumDF.std()
+        momentumDF = (momentumDF - momentumMean) / momentumStd
+
+        volatilityMean = volatilityDF.mean()
+        volatilityStd = volatilityDF.std()
+        volatilityDF = (volatilityDF - volatilityMean) / volatilityStd
+
+        stats = []
+        stats.append(momentumMean)
+        stats.append(momentumStd)
+        stats.append(volatilityMean)
+        stats.append(volatilityStd)
+        stats.append(bollingerBandMean)
+        stats.append(bollingerBandStandardDeviation)
+
+        return FiveDayPriceChange, bollingerBandValue, momentumDF, stats, unalteredPrices, volatilityDF
 
     def setUpTestData(self,dates,learner, stats):
         momentumDF, actual5DayChange, unalteredPrices = self.getMomentum(dates)
@@ -222,8 +226,6 @@ class learner(object):
         volatilityStd = stats[3]
         stdDF = (stdDF-volatilityMean)/ volatilityStd
 
-
-        spyDF = spyDF[3:-3]
         momentumDF = momentumDF[3:-3]
         stdDF = stdDF[3:-3]
         actual5DayChange = actual5DayChange[3:-3]
@@ -265,11 +267,6 @@ class learner(object):
         fiveDayPrices.plot(label = "Y Train",ax=ax,color = 'r')
         yPredXPriceDF.plot(label = "Pred Y", ax=ax, color = "g")
 
-        rmse = math.sqrt(((trainY - predYTrain) ** 2).sum()/trainY.shape[0])
-        # print "rmse"
-        # print rmse
-        c = np.corrcoef(predYTrain, y=trainY)
-        # print "corr: ", c[0,1]
         ax.set_xlabel("Time")
         ax.set_ylabel("Price")
 
@@ -283,17 +280,12 @@ class learner(object):
         unalteredPrices = unalteredPrices.dropna()
 
         daily_returns = unalteredPrices.copy()
-        #print daily_returns
+
         daily_returns[1:] = (unalteredPrices[1:]/ unalteredPrices[:-1].values)-1
         daily_returns.ix[0,:]=0
-        # print "printing daily returns"
-        # print daily_returns
-        # std = daily_returns.rolling_std()
-        std = pd.rolling_std(daily_returns,5)
-        # print "stndard dev of daily retunrs"
-        # print std
 
-        # print std
+        std = pd.rolling_std(daily_returns,5)
+
         return std
 
     def getMomentum(self,dates):
@@ -645,7 +637,7 @@ cum_ret, avg_daily_ret, std_daily_ret, sharpe_ratio = l.assess_portfolio(portval
 testDates=  pd.date_range('2009-12-31', '2011-12-31')
 
 testData = l.setUpTestData(testDates,learner,stats)
-l.tradeTest(testData)
+l.trade(testData, unalteredPrices)
 
 portvalsTest = compute_portvals_test()
 
