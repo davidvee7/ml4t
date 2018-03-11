@@ -144,7 +144,6 @@ class learner(object):
         learner = knn.KNNLearner(2,verbose = True) # create a knn learner
         learner.addEvidence(trainX, trainY) # train it
         predYTrainBasedOnTraining = learner.query(trainX) # get the predictions        sy = sknn.fit(trainX, trainY).predict(testX)
-        # predYTest = learner.query(testX)
 
         yPredictedDF = pd.DataFrame(predYTrainBasedOnTraining, index = FiveDayPriceChange.index)
 
@@ -175,13 +174,9 @@ class learner(object):
         return learner,yPredTimesPriceDF,stats,unalteredPrices
 
     def calculateTrainingStats(self, dates):
-        momentumDF, FiveDayPriceChange, unalteredPrices = self.getMomentum(dates)
-        volatilityDF = self.getVolatility(dates)
+        bollingerBandValue, fiveDayPriceChange, momentumDF, unalteredPrices, volatilityDF = self.beginParameterCalculations(
+            dates)
 
-        movingAverage = pd.rolling_mean(unalteredPrices, window=3)
-        movingAverage = movingAverage.dropna()
-
-        bollingerBandValue = (unalteredPrices - movingAverage) / (2 * volatilityDF)
         bollingerBandMean = bollingerBandValue.mean()
         bollingerBandStandardDeviation = bollingerBandValue.std()
         bollingerBandValue = (bollingerBandValue - bollingerBandMean) / bollingerBandStandardDeviation
@@ -202,33 +197,34 @@ class learner(object):
         stats.append(bollingerBandMean)
         stats.append(bollingerBandStandardDeviation)
 
-        return FiveDayPriceChange, bollingerBandValue, momentumDF, stats, unalteredPrices, volatilityDF
+        return fiveDayPriceChange, bollingerBandValue, momentumDF, stats, unalteredPrices, volatilityDF
+
+    def beginParameterCalculations(self, dates):
+        momentumDF, fiveDayPriceChange, unalteredPrices = self.getMomentum(dates)
+        volatilityDF = self.getVolatility(dates)
+        movingAverage = pd.rolling_mean(unalteredPrices, window=3)
+        movingAverage = movingAverage.dropna()
+        bollingerBandValue = (unalteredPrices - movingAverage) / (2 * volatilityDF)
+        return bollingerBandValue, fiveDayPriceChange, momentumDF, unalteredPrices, volatilityDF
 
     def setUpTestData(self,dates,learner, stats):
-        momentumDF, actual5DayChange, unalteredPrices = self.getMomentum(dates)
-        spyMomentum = self.getSPYMomentum(dates)
-        stdDF=self.getVolatility(dates)
-
-        SMA= pd.rolling_mean(unalteredPrices, window = 3)
-        SMA= SMA.dropna()
-        bb_value = (unalteredPrices-SMA)/(2*stdDF)
+        bollingerBandValue, fiveDayPriceChange, momentumDF, unalteredPrices, volatilityDF = self.beginParameterCalculations(
+            dates)
 
         bbMean = stats[4]
         bbStd = stats[5]
-        bb_value = (bb_value-bbMean) / bbStd
+        bb_value = (bollingerBandValue-bbMean) / bbStd
         momentumMean = stats[0]
         momentumStd = stats[1]
         momentumDF = (momentumDF-momentumMean) / momentumStd
-        spyMean = spyMomentum.mean()
-        spyStd = spyMomentum.std()
-        spyDF = (spyMomentum-spyMean)/ spyStd
+
         volatilityMean = stats[2]
         volatilityStd = stats[3]
-        stdDF = (stdDF-volatilityMean)/ volatilityStd
+        stdDF = (volatilityDF-volatilityMean)/ volatilityStd
 
         momentumDF = momentumDF[3:-3]
         stdDF = stdDF[3:-3]
-        actual5DayChange = actual5DayChange[3:-3]
+        actual5DayChange = fiveDayPriceChange[3:-3]
         bb_value = bb_value[3:-3]
         unalteredPrices= unalteredPrices/unalteredPrices.ix[0,:]
         unalteredPrices = unalteredPrices[3:-3]
@@ -242,14 +238,11 @@ class learner(object):
         allDF[:,3]= actual5DayChange['IBM']
 
         trainX = allDF[:,0:-1]
+        #below variable can be uncommented if desired to use sknn.fit
         trainY = allDF[:,-1]
 
-        # print trainX
         predYTrain = learner.query(trainX) # get the predictions        sy = sknn.fit(trainX, trainY).predict(testX)
-        # predYTest = learner.query(testX)
 
-
-        #b3 predytrain is 972, future price df is 471
         yPredDF = pd.DataFrame(predYTrain, index = actual5DayChange.index)
 
         yPredXPriceDF= unalteredPrices*yPredDF.values
@@ -305,14 +298,9 @@ class learner(object):
 
         momentumDF = (unalteredPrices/backwardShiftedPrices)-1
 
-        # print "whats the week"
-        # print weekPercentChange
-
         return momentumDF,weekPercentChange,unalteredPrices
 
     def getSPYMomentum(self,dates):
-
-
         backwardShiftedPrices = get_data([],dates,addSPY=True)
         backwardShiftedPrices = backwardShiftedPrices.dropna()
         backwardShiftedPrices = backwardShiftedPrices.shift(3)
@@ -324,44 +312,23 @@ class learner(object):
 
         return momentumDF
 
-
-
     def assess_portfolio(self,prices, \
         allocs=[1], \
          rfr=0.0, sf=252.0, \
-        sv = 10000):
+        startValue = 10000):
 
-        # Get daily portfolio value
-        #print normed
-        # normed = prices/prices.ix[0,:]
-        # #print normed
-        #
-        # alloced = normed*allocs
-        #
-        # pos_vals = alloced * sv
-        #
-        # portfolio_val = pos_vals.sum(axis=1)
         portfolio_val = prices
         portfolio_val_returns = (prices/prices.shift(1))-1
 
-
         if portfolio_val.shape[0]>=1:
-            cr = (portfolio_val.tail(1)/portfolio_val[0])-1
-        adr = portfolio_val_returns.mean()
-        sddr = portfolio_val_returns.std()
-        #sr =sqrt(freq) * ( mean(daily_rets-daily_rf)/std(daily_rets))
-        sr = (np.sqrt(sf)) * ((adr-rfr)/sddr)
+            cumulativeReturn = (portfolio_val.tail(1)/portfolio_val[0])-1
+        meanOfDailyReturns = portfolio_val_returns.mean()
+        standardDeviationOfDailyReturns = portfolio_val_returns.std()
+        sharpeRatio = (np.sqrt(sf)) * ((meanOfDailyReturns-rfr)/standardDeviationOfDailyReturns)
         # Compare daily portfolio value with SPY using a normalized plot
 
-
-        # Add code here to properly compute end value
-        ev = sv+ (sv*cr)
-
-        return cr, adr, sddr, sr
-def compute_portvals(orders_file = "./Orders/orders.csv", start_val = 10000):
-    # this is the function the autograder will call to test your code
-    # TODO: Your code here
-    # orders_all = get_data(syms, dates)  # automatically adds SPY
+        return cumulativeReturn, meanOfDailyReturns, standardDeviationOfDailyReturns, sharpeRatio
+def compute_portvals(orders_file = "./Orders/orders.csv", start_val = 10000, endDate = dt.date(2009, 12, 31)):
     exceedsLeverage = True
     exceededDate = None
     ordersDF= pd.read_csv(orders_file, index_col = "Date", parse_dates = True, usecols = ['Date', 'Symbol','Order','Shares'])
@@ -389,131 +356,9 @@ def compute_portvals(orders_file = "./Orders/orders.csv", start_val = 10000):
         # print "dis what ordersDf looks like"
         # print ordersDF
 
-        sd = ordersDF.index.min()
-        ed = dt.date(2009, 12, 31)
+        startDate = ordersDF.index.min()
         # Read in adjusted closing prices for given symbols, date range
-        dates = pd.date_range(sd, ed)
-        df1 = pd.DataFrame(index=dates)
-        dfPrices = get_data(syms,dates,True)
-        # print "df prices is the best in the building"
-        dfPrices.loc[:,'Cash']=pd.Series(1,index=dfPrices.index)
-        # print dfPrices
-        # dfSPY = pd.read_csv("../data/SPY.csv", index_col = "Date", parse_dates = True, usecols = ['Date', 'Adj Close'])
-
-        dfTrades = dfPrices.copy()
-        dfTrades.ix[:] = 0
-        # print "dftrades below"
-        # print dfTrades
-
-    #leverage = (sum(longs)+sum(abs(shorts))) / (sum(longs)- sum(abs(shorts)) + cash)
-    #keep a running sum of longs and shorts
-        #if leverage will go to >2.0, don't let trade happen.
-        for index, row in ordersDF.iterrows():
-            if row['Order'] == "BUY":
-                dfTrades.loc[index, row['Symbol']] = float(dfTrades.loc[index, row['Symbol']])+ float(row['Shares'])
-                dfTrades.loc[index, 'Cash'] = float(dfTrades.loc[index, 'Cash']) + float(row['Shares'] *-1 * dfPrices.loc[index,row['Symbol']])
-
-            elif row['Order']== "SELL":
-                dfTrades.loc[index, row['Symbol']] =float(dfTrades.loc[index, row['Symbol']])+ (-1 * float(row['Shares']))
-                dfTrades.loc[index, 'Cash'] = float(dfTrades.loc[index, 'Cash']) + float(row['Shares'])  * float(dfPrices.loc[index,row['Symbol']])
-
-            # if ordersDF.loc[index,row]
-        # print dfTrades
-
-        dfHoldings = dfTrades.copy()
-
-        dfHoldings.ix[:] = 0
-
-        #first row of dfHOldings = any shares bought on day 1. cash = start value - change in cash on day 1
-        #all other rows of dfHoldings = shares from current day-1 + any change in current day
-        for i in range (dfHoldings.shape[1]):
-            dfHoldings.ix[0,i] = dfTrades.ix[0,i]
-        dfHoldings.ix[0, dfHoldings.shape[1]-1] = start_val+float(dfTrades.ix[0,dfTrades.shape[1]-1])
-        # print "dfHoldings below"
-        # print dfHoldings
-
-
-        dfHoldings[:] = dfTrades.cumsum()
-        dfHoldings.ix[:,-1]= dfHoldings.ix[:,-1] + 10000
-
-        dfValues = dfHoldings.copy()
-        dfValues = dfHoldings* dfPrices
-
-        # print "df values below"
-        # print dfValues
-
-    #leverage = (sum(longs)+sum(abs(shorts))) / (sum(longs)- sum(abs(shorts)) + cash)
-
-        leverage = dfValues.copy()
-        # leverage['leverage'] =  leverage[:,:-1].sum(axis=1)  /leverage.sum(axis=1)
-        absoluteLeverage = dfValues.copy()
-        allColumnsExceptCash = list(dfValues)
-        allColumnsExceptCash.remove('Cash')
-
-        absoluteLeverage.ix[:] = np.abs(absoluteLeverage.ix[:])
-        # old ways leverage['leverage'] =  leverage[allColumns].sum(axis=1)/leverage.sum(axis=1)
-        leverage['leverage'] =  absoluteLeverage[allColumnsExceptCash].sum(axis=1)/leverage.sum(axis=1)
-
-        # print "leverage below post claculated"
-        # print leverage
-        exceededLeverage= leverage[np.abs(leverage.leverage)>2.0]
-        # print "exceeeded leverage below"
-        # print exceededLeverage
-
-        #what if leverage is exceeded not by a trade, and then after that, while leverage is still exceeded,
-        #another trade comes in.  should that trade be blocked? even if it's a sell?
-
-        if exceededLeverage.shape[0]>0:
-            # print "the first element of exceededlev"
-            # print exceededLeverage.index[0]
-            exceededDate = exceededLeverage.index[0]
-
-        else:
-            exceedsLeverage = False
-
-
-
-
-    portfolio_val = dfValues.sum(axis=1)
-
-    # print portfolio_val
-    return portfolio_val
-
-def compute_portvals_test(orders_file = "./Orders/orderstest.csv", start_val = 10000):
-    # this is the function the autograder will call to test your code
-    # TODO: Your code here
-    # orders_all = get_data(syms, dates)  # automatically adds SPY
-    exceedsLeverage = True
-    exceededDate = None
-    ordersDF= pd.read_csv(orders_file, index_col = "Date", parse_dates = True, usecols = ['Date', 'Symbol','Order','Shares'])
-
-    while exceedsLeverage==True:
-        if exceededDate != None:
-            # print "here is exceeded date"
-            # print exceededDate
-            if exceededDate in ordersDF:
-                # print "exceeeded date is in there"
-
-                if ordersDF.ix[exceededDate] is not None:
-                    # ordersDF=ordersDF.drop([exceededDate])
-                    # print "setting orders df to 0"
-                    # print "made it past error"
-                    ordersDF.ix[exceededDate, 'Shares']=0
-            else:
-                exceedsLeverage = False
-        syms = pd.unique(ordersDF.Symbol.ravel())
-        # print "type of syms"
-        # print type(syms)
-        syms = syms.tolist()
-        # print syms
-        #
-        # print "dis what ordersDf looks like"
-        # print ordersDF
-
-        sd = ordersDF.index.min()
-        ed = "2011-12-31"
-        # Read in adjusted closing prices for given symbols, date range
-        dates = pd.date_range(sd, ed)
+        dates = pd.date_range(startDate, endDate)
         df1 = pd.DataFrame(index=dates)
         dfPrices = get_data(syms,dates,True)
         # print "df prices is the best in the building"
@@ -637,9 +482,12 @@ cum_ret, avg_daily_ret, std_daily_ret, sharpe_ratio = l.assess_portfolio(portval
 testDates=  pd.date_range('2009-12-31', '2011-12-31')
 
 testData = l.setUpTestData(testDates,learner,stats)
-l.trade(testData, unalteredPrices)
 
-portvalsTest = compute_portvals_test()
+unalteredTestPrices = get_data(['IBM'], testDates,addSPY=False).dropna()
+unalteredTestPrices = unalteredTestPrices / unalteredTestPrices.ix[0,:]
+l.trade(testData, unalteredTestPrices)
+
+portvalsTest = compute_portvals(endDate=dt.date(2011,12,31))
 
 portvalsTest.columns = ['Out Sample Portfolio']
 # print "columns of portval"
