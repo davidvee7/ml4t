@@ -27,34 +27,22 @@ class learner(object):
         fileName = "./Orders/orders.csv"
         f=open(fileName,"w+")
         writer = csv.writer(f)
-        # headerColumns = "Date,Symbol,Order,Shares"
         headerColumns = ["Date","Symbol","Order","Shares"]
         writer.writerow(headerColumns)
 
-        # print "what does data look like"
-        # print data
+        daysHeldFor = -1
 
-        symbols = ['IBM']
-
-        holdFive = -1
-        # print data
-        # print unalteredPrices
         unalteredPrices = unalteredPrices[3:-3]
-        # print "shapes "
-        # print unalteredPrices.shape
-        # print data.shape
-        # print data.columns
-        for i in data.index.date:
-            # print i
 
-            #go long
-            # print data.ix[i,1]
-            if holdFive>=0 and holdFive < 5:
-                holdFive +=1
+        for i in data.index.date:
+            #Always hold position for at least 5 days
+            if daysHeldFor>=0 and daysHeldFor < 5:
+                daysHeldFor +=1
                 continue
             else:
 
                 if (data["Predicted Y"].ix[i]> unalteredPrices["IBM"].ix[i] and (longIsOpen==False or shortIsOpen==True)):
+                    #Close the short by buying out the position.
                     if shortIsOpen == True:
                         shortIsOpen=False
                         close.append(i)
@@ -64,7 +52,8 @@ class learner(object):
                         symbol = "IBM"
                         rowValues = [orderDate,symbol,orderType,shares]
                         writer.writerow(rowValues)
-                        holdFive=0
+                        daysHeldFor=0
+                    #Open a long position
                     else:
                         # print "tim eto buy"
                         buys.append(i)
@@ -75,9 +64,10 @@ class learner(object):
                         symbol = "IBM"
                         rowValues = [orderDate,symbol,orderType,shares]
                         writer.writerow(rowValues)
-                        holdFive=0
+                        daysHeldFor=0
 
                 elif data["Predicted Y"].ix[i]<unalteredPrices["IBM"].ix[i] and (shortIsOpen==False or longIsOpen==True):
+                    #Close the long position by selling.
                     if longIsOpen == True:
                         close.append(i)
                         # shorts.append(i)
@@ -88,8 +78,8 @@ class learner(object):
                         longIsOpen=False
                         rowValues = [orderDate,symbol,orderType,shares]
                         writer.writerow(rowValues)
-                        holdFive=0
-
+                        daysHeldFor=0
+                    #Open a short position.
                     else:
                         shorts.append(i)
                         shortIsOpen = True
@@ -100,125 +90,26 @@ class learner(object):
 
                         rowValues = [orderDate,symbol,orderType,shares]
                         writer.writerow(rowValues)
-                        holdFive=0
+                        daysHeldFor=0
 
         f.close()
-        symbols = ['IBM']
-        unalteredPrices = get_data(symbols,dates,addSPY=False)
-        unalteredPrices = unalteredPrices.dropna()
-        unalteredPrices= unalteredPrices/unalteredPrices.ix[0,:]
 
-        ax = unalteredPrices["IBM"].plot(title="Entry/Exit Graph", label = "IBM",color ='b')
-        # print buys
+        #The below code will display the entry/exit graph
+        self.displayEntryExitChart(buys, close, shorts)
+
+    def displayEntryExitChart(self, buys, close, shorts):
+        symbols = ['IBM']
+        unalteredPrices = get_data(symbols, dates, addSPY=False)
+        unalteredPrices = unalteredPrices.dropna()
+        unalteredPrices = unalteredPrices / unalteredPrices.ix[0, :]
+
+        ax = unalteredPrices["IBM"].plot(title="Entry/Exit Graph", label="IBM", color='b')
+
         ymin, ymax = ax.get_ylim()
-        plt.vlines(buys,ymin=ymin,ymax=ymax, color = 'g')
-        plt.vlines(close,ymin=ymin,ymax=ymax, color = 'k')
-        legend = ax.legend()
-
-        # print "shorts"
-        # print shorts
-        plt.vlines(shorts,ymin=ymin,ymax=ymax, color = 'r')
-        #
-        plt.show()
-
-    def tradeTest(self,data):
-        longIsOpen = False
-        shortIsOpen = False
-        buys = []
-        shorts = []
-        close = []
-
-        fileName = "./Orders/orderstest.csv"
-        f=open(fileName,"w+")
-        writer = csv.writer(f)
-        # headerColumns = "Date,Symbol,Order,Shares"
-        headerColumns = ["Date","Symbol","Order","Shares"]
-        writer.writerow(headerColumns)
-
-        testDates=  pd.date_range('2009-12-31', '2011-12-31')
-
-        symbols = ['IBM']
-        unalteredPrices = get_data(symbols,testDates,addSPY=False)
-        unalteredPrices = unalteredPrices.dropna()
-        unalteredPrices= unalteredPrices/unalteredPrices.ix[0,:]
-
-        unalteredPrices = unalteredPrices[3:-3]
-        count = 0
-        holdFive = -1
-        for i in data.index.date:
-            # print i
-
-            #go long
-            # print data.ix[i,1]
-            if holdFive>=0 and holdFive < 5:
-                holdFive +=1
-                continue
-            else:
-
-                if data["Predicted Y"].ix[i]> unalteredPrices["IBM"].ix[i] and longIsOpen==False:
-                    if shortIsOpen == True:
-                        shortIsOpen=False
-                        close.append(i)
-                        orderDate = str(i)
-                        orderType = "BUY"
-                        shares = "100"
-                        symbol = "IBM"
-                        rowValues = [orderDate,symbol,orderType,shares]
-                        writer.writerow(rowValues)
-                        holdFive=0
-                    else:
-                        # print "tim eto buy"
-                        buys.append(i)
-                        longIsOpen = True
-                        orderDate = str(i)
-                        orderType = "BUY"
-                        shares = "100"
-                        symbol = "IBM"
-                        rowValues = [orderDate,symbol,orderType,shares]
-                        writer.writerow(rowValues)
-                        holdFive=0
-
-                elif data["Predicted Y"].ix[i]<unalteredPrices["IBM"].ix[i] and (shortIsOpen==False or longIsOpen==True):
-                    if longIsOpen == True:
-                        close.append(i)
-                        # shorts.append(i)
-                        orderDate = str(i)
-                        orderType = "SELL"
-                        shares = "100"
-                        symbol = "IBM"
-                        longIsOpen=False
-                        rowValues = [orderDate,symbol,orderType,shares]
-                        writer.writerow(rowValues)
-                        holdFive=0
-
-                    else:
-                        shorts.append(i)
-                        shortIsOpen = True
-                        orderDate = str(i)
-                        orderType = "SELL"
-                        shares = "100"
-                        symbol = "IBM"
-
-                        rowValues = [orderDate,symbol,orderType,shares]
-                        writer.writerow(rowValues)
-                        holdFive=0
-
-        f.close()
-        testDates=  pd.date_range('2009-12-31', '2011-12-31')
-
-        symbols = ['IBM']
-        unalteredPrices = get_data(symbols,testDates,addSPY=False)
-        unalteredPrices = unalteredPrices.dropna()
-        unalteredPrices= unalteredPrices/unalteredPrices.ix[0,:]
-
-        ax = unalteredPrices.plot(title="Entry/Exit Graph", label = "IBM",color ='b')        # print buys
-        ymin, ymax = ax.get_ylim()
-        plt.vlines(buys,ymin=ymin,ymax=ymax, color = 'g')
-        plt.vlines(close,ymin=ymin,ymax=ymax, color = 'k')
-        # print "shorts"
-        # print shorts
-        plt.vlines(shorts,ymin=ymin,ymax=ymax, color = 'r')
-        #
+        
+        plt.vlines(buys, ymin=ymin, ymax=ymax, color='g', label='Buys')
+        plt.vlines(close, ymin=ymin, ymax=ymax, color='k', label='Exits')
+        plt.vlines(shorts, ymin=ymin, ymax=ymax, color='r', label='Shorts')
         plt.show()
 
     def setUp(self,dates):
