@@ -106,7 +106,7 @@ class learner(object):
         ax = unalteredPrices["IBM"].plot(title="Entry/Exit Graph", label="IBM", color='b')
 
         ymin, ymax = ax.get_ylim()
-        
+
         plt.vlines(buys, ymin=ymin, ymax=ymax, color='g', label='Buys')
         plt.vlines(close, ymin=ymin, ymax=ymax, color='k', label='Exits')
         plt.vlines(shorts, ymin=ymin, ymax=ymax, color='r', label='Shorts')
@@ -115,11 +115,11 @@ class learner(object):
     def setUp(self,dates):
         momentumDF, actual5DayChange, unalteredPrices = self.getMomentum(dates)
         spyMomentum = self.getSPYMomentum(dates)
-        stdDF=self.getVolatility(dates)
+        volatilityDF=self.getVolatility(dates)
 
-        SMA= pd.rolling_mean(unalteredPrices, window = 3)
-        SMA= SMA.dropna()
-        bb_value = (unalteredPrices-SMA)/(2*stdDF)
+        movingAverage= pd.rolling_mean(unalteredPrices, window = 3)
+        movingAverage= movingAverage.dropna()
+        bb_value = (unalteredPrices-movingAverage)/(2*volatilityDF)
 
         stats = []
 
@@ -132,9 +132,9 @@ class learner(object):
         spyMean = spyMomentum.mean()
         spyStd = spyMomentum.std()
         spyDF = (spyMomentum-spyMean)/ spyStd
-        volatilityMean = stdDF.mean()
-        volatilityStd = stdDF.std()
-        stdDF = (stdDF-volatilityMean)/ volatilityStd
+        volatilityMean = volatilityDF.mean()
+        volatilityStd = volatilityDF.std()
+        volatilityDF = (volatilityDF-volatilityMean)/ volatilityStd
 
         stats.append(momentumMean)
         stats.append(momentumStd)
@@ -145,7 +145,7 @@ class learner(object):
 
         spyDF = spyDF[3:-3]
         momentumDF = momentumDF[3:-3]
-        stdDF = stdDF[3:-3]
+        volatilityDF = volatilityDF[3:-3]
         actual5DayChange = actual5DayChange[3:-3]
         bb_value = bb_value[3:-3]
         unalteredPrices= unalteredPrices/unalteredPrices.ix[0,:]
@@ -155,7 +155,7 @@ class learner(object):
 
         allDF = np.ones((momentumDF.shape[0],4))
         allDF[:,0]= momentumDF['IBM']
-        allDF[:,1]= stdDF['IBM']
+        allDF[:,1]= volatilityDF['IBM']
         allDF[:,2]= bb_value['IBM']
         allDF[:,3]= actual5DayChange['IBM']
 
