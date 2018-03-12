@@ -114,41 +114,24 @@ class learner(object):
         plt.show()
 
     def setUp(self,dates):
-        FiveDayPriceChange, bollingerBandValues, momentumDF, stats, unalteredPrices, volatilityDF = self.calculateTrainingStats(
+        fiveDayPriceChange, bollingerBandValues, momentumDF, stats, unalteredPrices, volatilityDF = self.calculateTrainingStats(
             dates)
 
         #shave off the NA's in the first three and last 3 rows.  Necessary because the stats
         #are calculated on a rolling basis.
-        momentumDF = momentumDF[3:-3]
-        volatilityDF = volatilityDF[3:-3]
-        FiveDayPriceChange = FiveDayPriceChange[3:-3]
-        bollingerBandValues = bollingerBandValues[3:-3]
-        unalteredPrices= unalteredPrices/unalteredPrices.ix[0,:]
-        unalteredPrices = unalteredPrices[3:-3]
-
-        #Normalize fivedaypricechange
-        FiveDayPriceChange = FiveDayPriceChange+1
-
-        allDF = np.ones((momentumDF.shape[0],4))
-        allDF[:,0]= momentumDF['IBM']
-        allDF[:,1]= volatilityDF['IBM']
-        allDF[:,2]= bollingerBandValues['IBM']
-        allDF[:,3]= FiveDayPriceChange['IBM']
-
-        #The inputs
-        trainX = allDF[:,0:-1]
-        #The outcome
-        trainY = allDF[:,-1]
+        fiveDayPriceChange, trainX, trainY, unalteredPrices = self.prepareTrainXandY(bollingerBandValues,
+                                                                                     fiveDayPriceChange, momentumDF,
+                                                                                     unalteredPrices, volatilityDF)
 
         # learner = lrl.LinRegLearner(verbose = True) # create a LinRegLearner
         learner = knn.KNNLearner(2,verbose = True) # create a knn learner
         learner.addEvidence(trainX, trainY) # train it
         predYTrainBasedOnTraining = learner.query(trainX) # get the predictions        sy = sknn.fit(trainX, trainY).predict(testX)
 
-        yPredictedDF = pd.DataFrame(predYTrainBasedOnTraining, index = FiveDayPriceChange.index)
+        yPredictedDF = pd.DataFrame(predYTrainBasedOnTraining, index = fiveDayPriceChange.index)
 
         yPredTimesPriceDF= yPredictedDF.values*unalteredPrices
-        fiveDayPrices = FiveDayPriceChange.values* unalteredPrices
+        fiveDayPrices = fiveDayPriceChange.values* unalteredPrices
 
         yPredTimesPriceDF.columns = ['Predicted Y']
         fiveDayPrices.columns = ['Y Train']
@@ -172,6 +155,25 @@ class learner(object):
         plt.show()
 
         return learner,yPredTimesPriceDF,stats,unalteredPrices
+
+    def prepareTrainXandY(self, bollingerBandValues, fiveDayPriceChange, momentumDF, unalteredPrices, volatilityDF):
+        momentumDF = momentumDF[3:-3]
+        volatilityDF = volatilityDF[3:-3]
+        fiveDayPriceChange = fiveDayPriceChange[3:-3]
+        bollingerBandValues = bollingerBandValues[3:-3]
+        unalteredPrices = unalteredPrices / unalteredPrices.ix[0, :]
+        unalteredPrices = unalteredPrices[3:-3]
+        fiveDayPriceChange = fiveDayPriceChange + 1
+        allDF = np.ones((momentumDF.shape[0], 4))
+        allDF[:, 0] = momentumDF['IBM']
+        allDF[:, 1] = volatilityDF['IBM']
+        allDF[:, 2] = bollingerBandValues['IBM']
+        allDF[:, 3] = fiveDayPriceChange['IBM']
+        # The inputs
+        trainX = allDF[:, 0:-1]
+        # The outcome
+        trainY = allDF[:, -1]
+        return fiveDayPriceChange, trainX, trainY, unalteredPrices
 
     def calculateTrainingStats(self, dates):
         bollingerBandValue, fiveDayPriceChange, momentumDF, unalteredPrices, volatilityDF = self.beginParameterCalculations(
@@ -213,35 +215,20 @@ class learner(object):
 
         momentumMean,momentumStd,volatilityMean,volatilityStd,bbMean,bbStd = stats[0],stats[1],stats[2],stats[3],stats[4],stats[5]
 
-        bb_value = (bollingerBandValue-bbMean) / bbStd
+        bollingerBandValues = (bollingerBandValue-bbMean) / bbStd
         momentumDF = (momentumDF-momentumMean) / momentumStd
-        stdDF = (volatilityDF-volatilityMean)/ volatilityStd
+        volatilityDF = (volatilityDF-volatilityMean)/ volatilityStd
 
-        momentumDF = momentumDF[3:-3]
-        stdDF = stdDF[3:-3]
-        actual5DayChange = fiveDayPriceChange[3:-3]
-        bb_value = bb_value[3:-3]
-        unalteredPrices= unalteredPrices/unalteredPrices.ix[0,:]
-        unalteredPrices = unalteredPrices[3:-3]
-
-        actual5DayChange = actual5DayChange+1
-
-        allDF = np.ones((momentumDF.shape[0],4))
-        allDF[:,0]= momentumDF['IBM']
-        allDF[:,1]= stdDF['IBM']
-        allDF[:,2]= bb_value['IBM']
-        allDF[:,3]= actual5DayChange['IBM']
-
-        trainX = allDF[:,0:-1]
-        #below variable can be uncommented if desired to use sknn.fit
-        trainY = allDF[:,-1]
+        fiveDayPriceChange, trainX, trainY, unalteredPrices = self.prepareTrainXandY(bollingerBandValues,
+                                                                                     fiveDayPriceChange, momentumDF,
+                                                                                     unalteredPrices, volatilityDF)
 
         predYTrain = learner.query(trainX) # get the predictions        sy = sknn.fit(trainX, trainY).predict(testX)
 
-        yPredDF = pd.DataFrame(predYTrain, index = actual5DayChange.index)
+        yPredDF = pd.DataFrame(predYTrain, index = fiveDayPriceChange.index)
 
         yPredXPriceDF= unalteredPrices*yPredDF.values
-        fiveDayPrices = unalteredPrices * actual5DayChange.values
+        fiveDayPrices = unalteredPrices * fiveDayPriceChange.values
 
         yPredXPriceDF.columns = ['Predicted Y']
         fiveDayPrices.columns = ['Y Train']
