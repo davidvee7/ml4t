@@ -211,15 +211,10 @@ class learner(object):
         bollingerBandValue, fiveDayPriceChange, momentumDF, unalteredPrices, volatilityDF = self.beginParameterCalculations(
             dates)
 
-        bbMean = stats[4]
-        bbStd = stats[5]
-        bb_value = (bollingerBandValue-bbMean) / bbStd
-        momentumMean = stats[0]
-        momentumStd = stats[1]
-        momentumDF = (momentumDF-momentumMean) / momentumStd
+        momentumMean,momentumStd,volatilityMean,volatilityStd,bbMean,bbStd = stats[0],stats[1],stats[2],stats[3],stats[4],stats[5]
 
-        volatilityMean = stats[2]
-        volatilityStd = stats[3]
+        bb_value = (bollingerBandValue-bbMean) / bbStd
+        momentumDF = (momentumDF-momentumMean) / momentumStd
         stdDF = (volatilityDF-volatilityMean)/ volatilityStd
 
         momentumDF = momentumDF[3:-3]
