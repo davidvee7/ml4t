@@ -141,20 +141,17 @@ class learner(object):
         unalteredPrices = unalteredPrices.dropna()
         unalteredPrices= unalteredPrices/unalteredPrices.ix[0,:]
 
-        ax = unalteredPrices.plot(title="Y Train/Price/Pred Y", label = "Price",color ='b')
-        fiveDayPrices.plot(label = "Y Train",ax=ax,color = 'r')
-        yPredTimesPriceDF.plot(label = "Predicted Y", ax=ax, color = "g")
-
-        # rmse = math.sqrt(((trainY - predYTrainBasedOnTraining) ** 2).sum()/trainY.shape[0])
-
-        # c = np.corrcoef(predYTrainBasedOnTraining, y=trainY)
-
-        ax.set_xlabel("Time")
-        ax.set_ylabel("Price")
-
-        plt.show()
+        self.showChartYTrainYPred(fiveDayPrices, unalteredPrices, yPredTimesPriceDF)
 
         return learner,yPredTimesPriceDF,stats,unalteredPrices
+
+    def showChartYTrainYPred(self, fiveDayPrices, unalteredPrices, yPredTimesPriceDF):
+        ax = unalteredPrices.plot(title="Y Train/Price/Pred Y", label="Price", color='b')
+        fiveDayPrices.plot(label="Y Train", ax=ax, color='r')
+        yPredTimesPriceDF.plot(label="Predicted Y", ax=ax, color="g")
+        ax.set_xlabel("Time")
+        ax.set_ylabel("Price")
+        plt.show()
 
     def prepareTrainXandY(self, bollingerBandValues, fiveDayPriceChange, momentumDF, unalteredPrices, volatilityDF):
         momentumDF = momentumDF[3:-3]
@@ -227,10 +224,10 @@ class learner(object):
 
         yPredDF = pd.DataFrame(predYTrain, index = fiveDayPriceChange.index)
 
-        yPredXPriceDF= unalteredPrices*yPredDF.values
+        yPredTimesPriceDF= unalteredPrices*yPredDF.values
         fiveDayPrices = unalteredPrices * fiveDayPriceChange.values
 
-        yPredXPriceDF.columns = ['Predicted Y']
+        yPredTimesPriceDF.columns = ['Predicted Y']
         fiveDayPrices.columns = ['Y Train']
 
         symbols = ['IBM']
@@ -238,16 +235,10 @@ class learner(object):
         unalteredPrices = unalteredPrices.dropna()
         unalteredPrices= unalteredPrices/unalteredPrices.ix[0,:]
 
-        ax = unalteredPrices.plot(title="Y Train/Price/Pred Y", label = "Price",color ='b')
-        fiveDayPrices.plot(label = "Y Train",ax=ax,color = 'r')
-        yPredXPriceDF.plot(label = "Pred Y", ax=ax, color = "g")
+        self.showChartYTrainYPred(fiveDayPrices, unalteredPrices, yPredTimesPriceDF)
 
-        ax.set_xlabel("Time")
-        ax.set_ylabel("Price")
+        return yPredTimesPriceDF
 
-        plt.show()
-
-        return yPredXPriceDF
     def getVolatility(self,dates):
         # dates = pd.date_range('2007-12-31', '2009-12-31')
         symbols = ['IBM']

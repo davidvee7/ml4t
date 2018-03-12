@@ -22,14 +22,14 @@
     <favorites_list name="ML4T" />
   </component>
   <component name="FileEditorManager">
-    <splitter split-orientation="horizontal" split-proportion="0.3918427">
+    <splitter split-orientation="horizontal" split-proportion="0.49745083">
       <split-first>
         <leaf>
           <file leaf-file-name="learner.py" pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/MC3P2/learner.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state vertical-scroll-proportion="0.6722689">
-                  <caret line="224" column="0" selection-start-line="223" selection-start-column="115" selection-end-line="224" selection-end-column="0" />
+                <state vertical-scroll-proportion="0.45378152">
+                  <caret line="224" column="12" selection-start-line="224" selection-start-column="8" selection-end-line="224" selection-end-column="15" />
                   <folding>
                     <element signature="e#28#57#0" expanded="true" />
                   </folding>
@@ -74,8 +74,8 @@
           <file leaf-file-name="learner.py" pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/MC3P2/learner.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state vertical-scroll-proportion="0.40840337">
-                  <caret line="224" column="0" selection-start-line="224" selection-start-column="0" selection-end-line="224" selection-end-column="0" />
+                <state vertical-scroll-proportion="0.5764706">
+                  <caret line="137" column="0" selection-start-line="137" selection-start-column="0" selection-end-line="137" selection-end-column="0" />
                   <folding>
                     <element signature="e#28#57#0" expanded="true" />
                   </folding>
@@ -103,8 +103,8 @@
     <order />
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="183" />
-    <option name="y" value="118" />
+    <option name="x" value="87" />
+    <option name="y" value="23" />
     <option name="width" value="1626" />
     <option name="height" value="934" />
   </component>
@@ -317,7 +317,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="183" y="118" width="1626" height="934" extended-state="0" />
+    <frame x="87" y="23" width="1626" height="934" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.15559655" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
@@ -363,7 +363,7 @@
       <breakpoints-dialog>
         <breakpoints-dialog />
       </breakpoints-dialog>
-      <option name="time" value="2" />
+      <option name="time" value="3" />
     </breakpoint-manager>
     <watches-manager />
   </component>
@@ -438,8 +438,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/MC3P2/learner.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.40840337">
-          <caret line="224" column="0" selection-start-line="224" selection-start-column="0" selection-end-line="224" selection-end-column="0" />
+        <state vertical-scroll-proportion="0.5764706">
+          <caret line="137" column="0" selection-start-line="137" selection-start-column="0" selection-end-line="137" selection-end-column="0" />
           <folding>
             <element signature="e#28#57#0" expanded="true" />
           </folding>
