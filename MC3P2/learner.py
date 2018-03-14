@@ -43,55 +43,30 @@ class learner(object):
 
                 if (data["Predicted Y"].ix[i]> unalteredPrices["IBM"].ix[i] and (longIsOpen==False or shortIsOpen==True)):
                     #Close the short by buying out the position.
+                    orderType, shares, symbol, orderDate, daysHeldFor = "BUY","100","IBM", str(i),0
+                    rowValues = [orderDate,symbol,orderType,shares]
+                    writer.writerow(rowValues)
                     if shortIsOpen == True:
-                        shortIsOpen=False
+                        shortIsOpen =False
                         close.append(i)
-                        orderDate = str(i)
-                        orderType = "BUY"
-                        shares = "100"
-                        symbol = "IBM"
-                        rowValues = [orderDate,symbol,orderType,shares]
-                        writer.writerow(rowValues)
-                        daysHeldFor=0
                     #Open a long position
                     else:
                         # print "tim eto buy"
                         buys.append(i)
                         longIsOpen = True
-                        orderDate = str(i)
-                        orderType = "BUY"
-                        shares = "100"
-                        symbol = "IBM"
-                        rowValues = [orderDate,symbol,orderType,shares]
-                        writer.writerow(rowValues)
-                        daysHeldFor=0
 
                 elif data["Predicted Y"].ix[i]<unalteredPrices["IBM"].ix[i] and (shortIsOpen==False or longIsOpen==True):
                     #Close the long position by selling.
+                    orderType, shares, symbol, orderDate, daysHeldFor = "SELL","100","IBM", str(i),0
+                    rowValues = [orderDate,symbol,orderType,shares]
+                    writer.writerow(rowValues)
                     if longIsOpen == True:
                         close.append(i)
-                        # shorts.append(i)
-                        orderDate = str(i)
-                        orderType = "SELL"
-                        shares = "100"
-                        symbol = "IBM"
                         longIsOpen=False
-                        rowValues = [orderDate,symbol,orderType,shares]
-                        writer.writerow(rowValues)
-                        daysHeldFor=0
                     #Open a short position.
                     else:
                         shorts.append(i)
                         shortIsOpen = True
-                        orderDate = str(i)
-                        orderType = "SELL"
-                        shares = "100"
-                        symbol = "IBM"
-
-                        rowValues = [orderDate,symbol,orderType,shares]
-                        writer.writerow(rowValues)
-                        daysHeldFor=0
-
         f.close()
 
         #The below code will display the entry/exit graph
@@ -126,21 +101,11 @@ class learner(object):
         # learner = lrl.LinRegLearner(verbose = True) # create a LinRegLearner
         learner = knn.KNNLearner(2,verbose = True) # create a knn learner
         learner.addEvidence(trainX, trainY) # train it
-        predYTrainBasedOnTraining = learner.query(trainX) # get the predictions        sy = sknn.fit(trainX, trainY).predict(testX)
 
-        yPredictedDF = pd.DataFrame(predYTrainBasedOnTraining, index = fiveDayPriceChange.index)
-
-        yPredTimesPriceDF= yPredictedDF.values*unalteredPrices
-        fiveDayPrices = fiveDayPriceChange.values* unalteredPrices
-
-        yPredTimesPriceDF.columns = ['Predicted Y']
-        fiveDayPrices.columns = ['Y Train']
-
-        symbols = ['IBM']
-        unalteredPrices = get_data(symbols,dates,addSPY=False)
-        unalteredPrices = unalteredPrices.dropna()
-        unalteredPrices= unalteredPrices/unalteredPrices.ix[0,:]
-
+        fiveDayPrices, unalteredPrices, yPredTimesPriceDF = self.setYFromTrainingAndGetActualY(dates,
+                                                                                               fiveDayPriceChange,
+                                                                                               learner, trainX,
+                                                                                               unalteredPrices)
         self.showChartYTrainYPred(fiveDayPrices, unalteredPrices, yPredTimesPriceDF)
 
         return learner,yPredTimesPriceDF,stats,unalteredPrices
@@ -220,24 +185,28 @@ class learner(object):
                                                                                      fiveDayPriceChange, momentumDF,
                                                                                      unalteredPrices, volatilityDF)
 
-        predYTrain = learner.query(trainX) # get the predictions        sy = sknn.fit(trainX, trainY).predict(testX)
-
-        yPredDF = pd.DataFrame(predYTrain, index = fiveDayPriceChange.index)
-
-        yPredTimesPriceDF= unalteredPrices*yPredDF.values
-        fiveDayPrices = unalteredPrices * fiveDayPriceChange.values
-
-        yPredTimesPriceDF.columns = ['Predicted Y']
-        fiveDayPrices.columns = ['Y Train']
-
-        symbols = ['IBM']
-        unalteredPrices = get_data(symbols,dates,addSPY=False)
-        unalteredPrices = unalteredPrices.dropna()
-        unalteredPrices= unalteredPrices/unalteredPrices.ix[0,:]
+        fiveDayPrices, unalteredPrices, yPredTimesPriceDF = self.setYFromTrainingAndGetActualY(dates,
+                                                                                               fiveDayPriceChange,
+                                                                                               learner, trainX,
+                                                                                               unalteredPrices)
 
         self.showChartYTrainYPred(fiveDayPrices, unalteredPrices, yPredTimesPriceDF)
 
         return yPredTimesPriceDF
+
+    def setYFromTrainingAndGetActualY(self, dates, fiveDayPriceChange, learner, trainX, unalteredPrices):
+        predictedYFromTraining = learner.query(
+            trainX)  # get the predictions        sy = sknn.fit(trainX, trainY).predict(testX)
+        yPredictedDF = pd.DataFrame(predictedYFromTraining, index=fiveDayPriceChange.index)
+        yPredTimesPriceDF = yPredictedDF.values * unalteredPrices
+        fiveDayPrices = fiveDayPriceChange.values * unalteredPrices
+        yPredTimesPriceDF.columns = ['Predicted Y']
+        fiveDayPrices.columns = ['Y Train']
+        symbols = ['IBM']
+        unalteredPrices = get_data(symbols, dates, addSPY=False)
+        unalteredPrices = unalteredPrices.dropna()
+        unalteredPrices = unalteredPrices / unalteredPrices.ix[0, :]
+        return fiveDayPrices, unalteredPrices, yPredTimesPriceDF
 
     def getVolatility(self,dates):
         # dates = pd.date_range('2007-12-31', '2009-12-31')
