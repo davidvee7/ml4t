@@ -272,82 +272,57 @@ class learner(object):
 
         return cumulativeReturn, meanOfDailyReturns, standardDeviationOfDailyReturns, sharpeRatio
 def compute_portvals(orders_file = "./Orders/orders.csv", start_val = 10000, endDate = dt.date(2009, 12, 31)):
-    exceedsLeverage = True
     exceededDate = None
     ordersDF= pd.read_csv(orders_file, index_col = "Date", parse_dates = True, usecols = ['Date', 'Symbol','Order','Shares'])
 
-    while exceedsLeverage==True:
-        if exceededDate != None:
-            if exceededDate in ordersDF:
-                if ordersDF.ix[exceededDate] is not None:
-                    ordersDF.ix[exceededDate, 'Shares']=0
-            else:
-                exceedsLeverage = False
-        syms = pd.unique(ordersDF.Symbol.ravel())
-
-        syms = syms.tolist()
-
-        startDate = ordersDF.index.min()
-        # Read in adjusted closing prices for given symbols, date range
-        dates = pd.date_range(startDate, endDate)
-        dfPrices = get_data(syms,dates,True)
-        dfPrices.loc[:,'Cash']=pd.Series(1,index=dfPrices.index)
-
-        dfTrades = dfPrices.copy()
-        dfTrades.ix[:] = 0
-
-    #leverage = (sum(longs)+sum(abs(shorts))) / (sum(longs)- sum(abs(shorts)) + cash)
-    #keep a running sum of longs and shorts
-        #if leverage will go to >2.0, don't let trade happen.
-        for index, row in ordersDF.iterrows():
-            if row['Order'] == "BUY":
-                dfTrades.loc[index, row['Symbol']] = float(dfTrades.loc[index, row['Symbol']])+ float(row['Shares'])
-                dfTrades.loc[index, 'Cash'] = float(dfTrades.loc[index, 'Cash']) + float(row['Shares'] *-1 * dfPrices.loc[index,row['Symbol']])
-
-            elif row['Order']== "SELL":
-                dfTrades.loc[index, row['Symbol']] =float(dfTrades.loc[index, row['Symbol']])+ (-1 * float(row['Shares']))
-                dfTrades.loc[index, 'Cash'] = float(dfTrades.loc[index, 'Cash']) + float(row['Shares'])  * float(dfPrices.loc[index,row['Symbol']])
-
-            # if ordersDF.loc[index,row]
-        # print dfTrades
-
-        dfHoldings = dfTrades.copy()
-
-        dfHoldings.ix[:] = 0
-
-        #first row of dfHOldings = any shares bought on day 1. cash = start value - change in cash on day 1
-        #all other rows of dfHoldings = shares from current day-1 + any change in current day
-        for i in range (dfHoldings.shape[1]):
-            dfHoldings.ix[0,i] = dfTrades.ix[0,i]
-        dfHoldings.ix[0, dfHoldings.shape[1]-1] = start_val+float(dfTrades.ix[0,dfTrades.shape[1]-1])
-
-        dfHoldings[:] = dfTrades.cumsum()
-        dfHoldings.ix[:,-1]= dfHoldings.ix[:,-1] + 10000
-
-        dfValues = dfHoldings.copy()
-        dfValues = dfHoldings* dfPrices
-
-        leverage = dfValues.copy()
-
-        absoluteLeverage = dfValues.copy()
-        allColumnsExceptCash = list(dfValues)
-        allColumnsExceptCash.remove('Cash')
-
-        absoluteLeverage.ix[:] = np.abs(absoluteLeverage.ix[:])
-
-        leverage['leverage'] =  absoluteLeverage[allColumnsExceptCash].sum(axis=1)/leverage.sum(axis=1)
-
-        exceededLeverage= leverage[np.abs(leverage.leverage)>2.0]
-
-        #what if leverage is exceeded not by a trade, and then after that, while leverage is still exceeded,
-        #another trade comes in.  should that trade be blocked? even if it's a sell?
-
-        if exceededLeverage.shape[0]>0:
-            exceededDate = exceededLeverage.index[0]
-
+    if exceededDate != None:
+        if exceededDate in ordersDF:
+            if ordersDF.ix[exceededDate] is not None:
+                ordersDF.ix[exceededDate, 'Shares']=0
         else:
             exceedsLeverage = False
+    syms = pd.unique(ordersDF.Symbol.ravel())
 
+    syms = syms.tolist()
+
+    startDate = ordersDF.index.min()
+    # Read in adjusted closing prices for given symbols, date range
+    dates = pd.date_range(startDate, endDate)
+    dfPrices = get_data(syms,dates,True)
+    dfPrices.loc[:,'Cash']=pd.Series(1,index=dfPrices.index)
+
+    dfTrades = dfPrices.copy()
+    dfTrades.ix[:] = 0
+
+#leverage = (sum(longs)+sum(abs(shorts))) / (sum(longs)- sum(abs(shorts)) + cash)
+#keep a running sum of longs and shorts
+    #if leverage will go to >2.0, don't let trade happen.
+    for index, row in ordersDF.iterrows():
+        if row['Order'] == "BUY":
+            dfTrades.loc[index, row['Symbol']] = float(dfTrades.loc[index, row['Symbol']])+ float(row['Shares'])
+            dfTrades.loc[index, 'Cash'] = float(dfTrades.loc[index, 'Cash']) + float(row['Shares'] *-1 * dfPrices.loc[index,row['Symbol']])
+
+        elif row['Order']== "SELL":
+            dfTrades.loc[index, row['Symbol']] =float(dfTrades.loc[index, row['Symbol']])+ (-1 * float(row['Shares']))
+            dfTrades.loc[index, 'Cash'] = float(dfTrades.loc[index, 'Cash']) + float(row['Shares'])  * float(dfPrices.loc[index,row['Symbol']])
+
+        # if ordersDF.loc[index,row]
+    # print dfTrades
+
+    dfHoldings = dfTrades.copy()
+
+    dfHoldings.ix[:] = 0
+
+    #first row of dfHOldings = any shares bought on day 1. cash = start value - change in cash on day 1
+    #all other rows of dfHoldings = shares from current day-1 + any change in current day
+    for i in range (dfHoldings.shape[1]):
+        dfHoldings.ix[0,i] = dfTrades.ix[0,i]
+    dfHoldings.ix[0, dfHoldings.shape[1]-1] = start_val+float(dfTrades.ix[0,dfTrades.shape[1]-1])
+
+    dfHoldings[:] = dfTrades.cumsum()
+    dfHoldings.ix[:,-1]= dfHoldings.ix[:,-1] + 10000
+
+    dfValues = dfHoldings* dfPrices
 
     portfolio_val = dfValues.sum(axis=1)
 
