@@ -72,6 +72,7 @@ class learner(object):
         #The below code will display the entry/exit graph
         self.displayEntryExitChart(buys, close, shorts,symbol)
 
+    #Create and display a chart depicting when a position begins and ends.
     def displayEntryExitChart(self, buys, close, shorts,symbol):
         symbols = [symbol]
         unalteredPrices = get_data(symbols, dates, addSPY=False)
@@ -88,6 +89,7 @@ class learner(object):
 
         plt.show()
 
+    #Calculate the statistics necessary to make intelligent decisions in the future.
     def setUp(self,dates,symbol):
         fiveDayPriceChange, bollingerBandValues, momentumDF, stats, unalteredPrices, volatilityDF = self.calculateTrainingStats(
             dates)
@@ -98,6 +100,7 @@ class learner(object):
                                                                                      fiveDayPriceChange, momentumDF,
                                                                                      unalteredPrices, volatilityDF,symbol)
 
+        #Uncomment the LinRegLearner and comment the KNN Learner to use that instead of KNN
         # learner = lrl.LinRegLearner(verbose = True) # create a LinRegLearner
         learner = knn.KNNLearner(2,verbose = True) # create a knn learner
         learner.addEvidence(trainX, trainY) # train it
@@ -110,8 +113,9 @@ class learner(object):
 
         return learner,yPredTimesPriceDF,stats,unalteredPrices
 
-    def showChartYTrainYPred(self, fiveDayPrices, unalteredPrices, yPredTimesPriceDF):
-        ax = unalteredPrices.plot(title="Y Train/Price/Pred Y", label="Price", color='b')
+    #Create and display a chart that shows the performance of the learner in training (YTrain) vs the performance of Y in testing (YPred)
+    def showChartYTrainYPred(self, fiveDayPrices, dailyPrices, yPredTimesPriceDF):
+        ax = dailyPrices.plot(title="Y Train/Price/Pred Y", label="Price", color='b')
         fiveDayPrices.plot(label="Y Train", ax=ax, color='r')
         yPredTimesPriceDF.plot(label="Predicted Y", ax=ax, color="g")
         ax.set_xlabel("Time")
