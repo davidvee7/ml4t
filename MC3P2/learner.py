@@ -16,7 +16,7 @@ from util import get_data, plot_data
 
 #improvements
 #1) unaltered prices is created and used and passed in many different places.  probably easiest to just calculate it once and pass it in when needed.
-#
+#2) Get the legends correct.  Every line in legend and every line labeled 
 
 class learner(object):
 
@@ -100,7 +100,7 @@ class learner(object):
 
         #shave off the NA's in the first three and last 3 rows.  Necessary because the stats
         #are calculated on a rolling basis.
-        fiveDayPriceChange, trainX, trainY, unalteredPrices = self.prepareTrainXandY(bollingerBandValues,
+        fiveDayPriceChange, trainX, trainY,unalteredPrices = self.prepareTrainXandY(bollingerBandValues,
                                                                                      fiveDayPriceChange, momentumDF,
                                                                                      unalteredPrices, volatilityDF,symbol)
 
@@ -176,7 +176,7 @@ class learner(object):
     #Calculate momentum, volatility and bollinger band values.
     def beginParameterCalculations(self, dates):
         momentumDF, fiveDayPriceChange, unalteredPrices = self.getMomentum(dates,symbol)
-        volatilityDF = self.getVolatility(dates,symbol)
+        volatilityDF = self.getVolatility(dates,symbol,unalteredPrices)
         movingAverage = pd.rolling_mean(unalteredPrices, window=3)
         movingAverage = movingAverage.dropna()
         bollingerBandValue = (unalteredPrices - movingAverage) / (2 * volatilityDF)
@@ -193,16 +193,16 @@ class learner(object):
         momentumDF = (momentumDF-momentumMean) / momentumStd
         volatilityDF = (volatilityDF-volatilityMean)/ volatilityStd
 
-        fiveDayPriceChange, trainX, trainY, unalteredPrices = self.prepareTrainXandY(bollingerBandValues,
+        fiveDayPriceChange, trainX, trainY, cleanedDailyPrices = self.prepareTrainXandY(bollingerBandValues,
                                                                                      fiveDayPriceChange, momentumDF,
                                                                                      unalteredPrices, volatilityDF,symbol)
 
-        fiveDayPrices, unalteredPrices, yPredTimesPriceDF = self.setYFromTrainingAndGetActualY(dates,
+        fiveDayPrices, normalizedDailyPrices, yPredTimesPriceDF = self.setYFromTrainingAndGetActualY(dates,
                                                                                                fiveDayPriceChange,
                                                                                                learner, trainX,
-                                                                                               unalteredPrices,symbol)
+                                                                                               cleanedDailyPrices,symbol)
 
-        self.showChartYTrainYPred(fiveDayPrices, unalteredPrices, yPredTimesPriceDF)
+        self.showChartYTrainYPred(fiveDayPrices, normalizedDailyPrices, yPredTimesPriceDF)
 
         return yPredTimesPriceDF
 
@@ -218,15 +218,10 @@ class learner(object):
         symbols = [symbol]
         unalteredPrices = get_data(symbols, dates, addSPY=False)
         unalteredPrices = unalteredPrices.dropna()
-        unalteredPrices = unalteredPrices / unalteredPrices.ix[0, :]
-        return fiveDayPrices, unalteredPrices, yPredTimesPriceDF
+        normalizedDailyPrices = unalteredPrices / unalteredPrices.ix[0, :]
+        return fiveDayPrices, normalizedDailyPrices, yPredTimesPriceDF
 
-    def getVolatility(self,dates,symbol):
-        # dates = pd.date_range('2007-12-31', '2009-12-31')
-        symbols = [symbol]
-        unalteredPrices = get_data(symbols,dates,addSPY=False)
-        unalteredPrices = unalteredPrices.dropna()
-
+    def getVolatility(self,dates,symbol,unalteredPrices):
         daily_returns = unalteredPrices.copy()
 
         daily_returns[1:] = (unalteredPrices[1:]/ unalteredPrices[:-1].values)-1
@@ -255,13 +250,10 @@ class learner(object):
 
         return momentumDF,weekPercentChange,unalteredPrices
 
-    def getSPYMomentum(self,dates):
+    def getSPYMomentum(self,dates,unalteredPrices):
         backwardShiftedPrices = get_data([],dates,addSPY=True)
         backwardShiftedPrices = backwardShiftedPrices.dropna()
         backwardShiftedPrices = backwardShiftedPrices.shift(3)
-
-        unalteredPrices = get_data([],dates,addSPY=True)
-        unalteredPrices = unalteredPrices.dropna()
 
         momentumDF = (unalteredPrices/backwardShiftedPrices)-1
 
