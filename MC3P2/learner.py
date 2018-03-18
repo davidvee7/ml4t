@@ -14,10 +14,10 @@ import datetime as dt
 import scipy.optimize as sco
 from util import get_data, plot_data
 
-
 class learner(object):
 
-    def trade(self,data,unalteredPrices):
+    #Creates a file of trades based on daily prices and what the strategy says to do.
+    def trade(self,strategyData,dailyPrices,symbol):
         longIsOpen = False
         shortIsOpen = False
         buys = []
@@ -32,18 +32,18 @@ class learner(object):
 
         daysHeldFor = -1
 
-        unalteredPrices = unalteredPrices[3:-3]
+        dailyPrices = dailyPrices[3:-3]
 
-        for i in data.index.date:
+        for i in strategyData.index.date:
             #Always hold position for at least 5 days
             if daysHeldFor>=0 and daysHeldFor < 5:
                 daysHeldFor +=1
                 continue
             else:
 
-                if (data["Predicted Y"].ix[i]> unalteredPrices["IBM"].ix[i] and (longIsOpen==False or shortIsOpen==True)):
+                if (strategyData["Predicted Y"].ix[i]> dailyPrices[symbol].ix[i] and (longIsOpen==False or shortIsOpen==True)):
                     #Close the short by buying out the position.
-                    orderType, shares, symbol, orderDate, daysHeldFor = "BUY","100","IBM", str(i),0
+                    orderType, shares, symbol, orderDate, daysHeldFor = "BUY","100",symbol, str(i),0
                     rowValues = [orderDate,symbol,orderType,shares]
                     writer.writerow(rowValues)
                     if shortIsOpen == True:
@@ -55,9 +55,9 @@ class learner(object):
                         buys.append(i)
                         longIsOpen = True
 
-                elif data["Predicted Y"].ix[i]<unalteredPrices["IBM"].ix[i] and (shortIsOpen==False or longIsOpen==True):
+                elif strategyData["Predicted Y"].ix[i]<dailyPrices[symbol].ix[i] and (shortIsOpen==False or longIsOpen==True):
                     #Close the long position by selling.
-                    orderType, shares, symbol, orderDate, daysHeldFor = "SELL","100","IBM", str(i),0
+                    orderType, shares, symbol, orderDate, daysHeldFor = "SELL","100",symbol, str(i),0
                     rowValues = [orderDate,symbol,orderType,shares]
                     writer.writerow(rowValues)
                     if longIsOpen == True:
@@ -70,15 +70,15 @@ class learner(object):
         f.close()
 
         #The below code will display the entry/exit graph
-        self.displayEntryExitChart(buys, close, shorts)
+        self.displayEntryExitChart(buys, close, shorts,symbol)
 
-    def displayEntryExitChart(self, buys, close, shorts):
-        symbols = ['IBM']
+    def displayEntryExitChart(self, buys, close, shorts,symbol):
+        symbols = [symbol]
         unalteredPrices = get_data(symbols, dates, addSPY=False)
         unalteredPrices = unalteredPrices.dropna()
         unalteredPrices = unalteredPrices / unalteredPrices.ix[0, :]
 
-        ax = unalteredPrices["IBM"].plot(title="Entry/Exit Graph", label="IBM", color='b')
+        ax = unalteredPrices[symbol].plot(title="Entry/Exit Graph", label=symbol, color='b')
 
         ymin, ymax = ax.get_ylim()
 
@@ -88,7 +88,7 @@ class learner(object):
 
         plt.show()
 
-    def setUp(self,dates):
+    def setUp(self,dates,symbol):
         fiveDayPriceChange, bollingerBandValues, momentumDF, stats, unalteredPrices, volatilityDF = self.calculateTrainingStats(
             dates)
 
@@ -96,7 +96,7 @@ class learner(object):
         #are calculated on a rolling basis.
         fiveDayPriceChange, trainX, trainY, unalteredPrices = self.prepareTrainXandY(bollingerBandValues,
                                                                                      fiveDayPriceChange, momentumDF,
-                                                                                     unalteredPrices, volatilityDF)
+                                                                                     unalteredPrices, volatilityDF,symbol)
 
         # learner = lrl.LinRegLearner(verbose = True) # create a LinRegLearner
         learner = knn.KNNLearner(2,verbose = True) # create a knn learner
@@ -105,7 +105,7 @@ class learner(object):
         fiveDayPrices, unalteredPrices, yPredTimesPriceDF = self.setYFromTrainingAndGetActualY(dates,
                                                                                                fiveDayPriceChange,
                                                                                                learner, trainX,
-                                                                                               unalteredPrices)
+                                                                                               unalteredPrices,symbol)
         self.showChartYTrainYPred(fiveDayPrices, unalteredPrices, yPredTimesPriceDF)
 
         return learner,yPredTimesPriceDF,stats,unalteredPrices
@@ -118,7 +118,7 @@ class learner(object):
         ax.set_ylabel("Price")
         plt.show()
 
-    def prepareTrainXandY(self, bollingerBandValues, fiveDayPriceChange, momentumDF, unalteredPrices, volatilityDF):
+    def prepareTrainXandY(self, bollingerBandValues, fiveDayPriceChange, momentumDF, unalteredPrices, volatilityDF,symbol):
         momentumDF = momentumDF[3:-3]
         volatilityDF = volatilityDF[3:-3]
         fiveDayPriceChange = fiveDayPriceChange[3:-3]
@@ -127,10 +127,10 @@ class learner(object):
         unalteredPrices = unalteredPrices[3:-3]
         fiveDayPriceChange = fiveDayPriceChange + 1
         allDF = np.ones((momentumDF.shape[0], 4))
-        allDF[:, 0] = momentumDF['IBM']
-        allDF[:, 1] = volatilityDF['IBM']
-        allDF[:, 2] = bollingerBandValues['IBM']
-        allDF[:, 3] = fiveDayPriceChange['IBM']
+        allDF[:, 0] = momentumDF[symbol]
+        allDF[:, 1] = volatilityDF[symbol]
+        allDF[:, 2] = bollingerBandValues[symbol]
+        allDF[:, 3] = fiveDayPriceChange[symbol]
         # The inputs
         trainX = allDF[:, 0:-1]
         # The outcome
@@ -164,8 +164,8 @@ class learner(object):
         return fiveDayPriceChange, bollingerBandValue, momentumDF, stats, unalteredPrices, volatilityDF
 
     def beginParameterCalculations(self, dates):
-        momentumDF, fiveDayPriceChange, unalteredPrices = self.getMomentum(dates)
-        volatilityDF = self.getVolatility(dates)
+        momentumDF, fiveDayPriceChange, unalteredPrices = self.getMomentum(dates,symbol)
+        volatilityDF = self.getVolatility(dates,symbol)
         movingAverage = pd.rolling_mean(unalteredPrices, window=3)
         movingAverage = movingAverage.dropna()
         bollingerBandValue = (unalteredPrices - movingAverage) / (2 * volatilityDF)
@@ -183,18 +183,18 @@ class learner(object):
 
         fiveDayPriceChange, trainX, trainY, unalteredPrices = self.prepareTrainXandY(bollingerBandValues,
                                                                                      fiveDayPriceChange, momentumDF,
-                                                                                     unalteredPrices, volatilityDF)
+                                                                                     unalteredPrices, volatilityDF,symbol)
 
         fiveDayPrices, unalteredPrices, yPredTimesPriceDF = self.setYFromTrainingAndGetActualY(dates,
                                                                                                fiveDayPriceChange,
                                                                                                learner, trainX,
-                                                                                               unalteredPrices)
+                                                                                               unalteredPrices,symbol)
 
         self.showChartYTrainYPred(fiveDayPrices, unalteredPrices, yPredTimesPriceDF)
 
         return yPredTimesPriceDF
 
-    def setYFromTrainingAndGetActualY(self, dates, fiveDayPriceChange, learner, trainX, unalteredPrices):
+    def setYFromTrainingAndGetActualY(self, dates, fiveDayPriceChange, learner, trainX, unalteredPrices,symbol):
         predictedYFromTraining = learner.query(
             trainX)  # get the predictions        sy = sknn.fit(trainX, trainY).predict(testX)
         yPredictedDF = pd.DataFrame(predictedYFromTraining, index=fiveDayPriceChange.index)
@@ -202,15 +202,15 @@ class learner(object):
         fiveDayPrices = fiveDayPriceChange.values * unalteredPrices
         yPredTimesPriceDF.columns = ['Predicted Y']
         fiveDayPrices.columns = ['Y Train']
-        symbols = ['IBM']
+        symbols = [symbol]
         unalteredPrices = get_data(symbols, dates, addSPY=False)
         unalteredPrices = unalteredPrices.dropna()
         unalteredPrices = unalteredPrices / unalteredPrices.ix[0, :]
         return fiveDayPrices, unalteredPrices, yPredTimesPriceDF
 
-    def getVolatility(self,dates):
+    def getVolatility(self,dates,symbol):
         # dates = pd.date_range('2007-12-31', '2009-12-31')
-        symbols = ['IBM']
+        symbols = [symbol]
         unalteredPrices = get_data(symbols,dates,addSPY=False)
         unalteredPrices = unalteredPrices.dropna()
 
@@ -223,8 +223,8 @@ class learner(object):
 
         return std
 
-    def getMomentum(self,dates):
-        symbols = ['IBM']
+    def getMomentum(self,dates,symbol):
+        symbols = [symbol]
         forwardShiftedPrices = get_data(symbols,dates,addSPY=False)
         forwardShiftedPrices = forwardShiftedPrices.dropna()
         forwardShiftedPrices = forwardShiftedPrices.shift(-3)
@@ -389,14 +389,15 @@ def compute_portvals(orders_file = "./Orders/orders.csv", start_val = 10000, end
 
 l = learner()
 dates = pd.date_range('2007-12-31', '2009-12-31')
+symbol = "IBM"
 
-learner,data, stats,unalteredPrices = l.setUp(dates)
-l.trade(data,unalteredPrices)
+learner,data, stats,unalteredPrices = l.setUp(dates,symbol)
+l.trade(data,unalteredPrices,symbol)
 portvals = compute_portvals()
 portvals.columns = ["Portfolio"]
 
 # portvals.title = "Portfolio"
-stock = get_data(["IBM"],dates,addSPY=False)
+stock = get_data([symbol],dates,addSPY=False)
 stock = stock.dropna()
 stock = (stock / stock.ix[0,:])*10000
 
@@ -425,16 +426,16 @@ testDates=  pd.date_range('2009-12-31', '2011-12-31')
 
 testData = l.setUpTestData(testDates,learner,stats)
 
-unalteredTestPrices = get_data(['IBM'], testDates,addSPY=False).dropna()
+unalteredTestPrices = get_data([symbol], testDates,addSPY=False).dropna()
 unalteredTestPrices = unalteredTestPrices / unalteredTestPrices.ix[0,:]
-l.trade(testData, unalteredTestPrices)
+l.trade(testData, unalteredTestPrices,symbol)
 
 portvalsTest = compute_portvals(endDate=dt.date(2011,12,31))
 
 portvalsTest.columns = ['Out Sample Portfolio']
 # print "columns of portval"
 # print portvalsTest.columns
-stock = get_data(["IBM"],testDates,addSPY=False)
+stock = get_data([symbol],testDates,addSPY=False)
 stock = stock.dropna()
 
 stock = (stock / stock.ix[0,:])*10000
@@ -457,5 +458,3 @@ print
 print "Average Daily Return of Fund: {}".format(avg_daily_ret)
 print
 print "Final Portfolio Value: {}".format(portvals[-1])
-
-print "Length of dataframe is : {}".format(len(portvalsTest))
