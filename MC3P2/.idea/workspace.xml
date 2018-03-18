@@ -43,11 +43,21 @@
               </provider>
             </entry>
           </file>
+          <file leaf-file-name="util.py" pinned="false" current-in-tab="false">
+            <entry file="file://$PROJECT_DIR$/util.py">
+              <provider selected="true" editor-type-id="text-editor">
+                <state vertical-scroll-proportion="0.0">
+                  <caret line="19" column="0" selection-start-line="19" selection-start-column="0" selection-end-line="19" selection-end-column="0" />
+                  <folding />
+                </state>
+              </provider>
+            </entry>
+          </file>
           <file leaf-file-name="learner.py" pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/learner.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state vertical-scroll-proportion="0.8737864">
-                  <caret line="18" column="74" selection-start-line="18" selection-start-column="74" selection-end-line="18" selection-end-column="74" />
+                <state vertical-scroll-proportion="0.3398058">
+                  <caret line="184" column="48" selection-start-line="184" selection-start-column="48" selection-end-line="184" selection-end-column="48" />
                   <folding>
                     <element signature="e#28#57#0" expanded="true" />
                   </folding>
@@ -62,8 +72,8 @@
           <file leaf-file-name="learner.py" pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/learner.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state vertical-scroll-proportion="0.68608415">
-                  <caret line="129" column="21" selection-start-line="129" selection-start-column="8" selection-end-line="129" selection-end-column="21" />
+                <state vertical-scroll-proportion="1.0970874">
+                  <caret line="409" column="0" selection-start-line="409" selection-start-column="0" selection-end-line="409" selection-end-column="0" />
                   <folding>
                     <element signature="e#28#57#0" expanded="true" />
                   </folding>
@@ -93,7 +103,7 @@
     <order />
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="226" />
+    <option name="x" value="541" />
     <option name="y" value="95" />
     <option name="width" value="1280" />
     <option name="height" value="709" />
@@ -315,7 +325,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="226" y="95" width="1280" height="709" extended-state="0" />
+    <frame x="541" y="95" width="1280" height="709" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.121875" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
@@ -526,10 +536,18 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/util.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="19" column="0" selection-start-line="19" selection-start-column="0" selection-end-line="19" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/learner.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.8737864">
-          <caret line="18" column="74" selection-start-line="18" selection-start-column="74" selection-end-line="18" selection-end-column="74" />
+        <state vertical-scroll-proportion="0.3398058">
+          <caret line="184" column="48" selection-start-line="184" selection-start-column="48" selection-end-line="184" selection-end-column="48" />
           <folding>
             <element signature="e#28#57#0" expanded="true" />
           </folding>
