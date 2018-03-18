@@ -96,14 +96,19 @@ class learner(object):
 
     #Calculate the statistics necessary to make intelligent decisions in the future.
     def setUp(self,dates,symbol):
-        fiveDayPriceChange, bollingerBandValues, momentumDF, stats, volatilityDF = self.calculateTrainingStats(
-            dates,symbol)
+        momentumDF = self.getMomentum(dates,symbol)
+        fiveDayPriceChange = self.getWeekPercentPriceChange(dates,symbol)
+        volatilityDF = self.getVolatility(dates,symbol)
+        bollingerBandDf = self.getBollingerBandVAlue(symbol,dates,volatilityDF)
 
-        #shave off the NA's in the first three and last 3 rows.  Necessary because the stats
-        #are calculated on a rolling basis.
+        stats = self.getStats(momentumDF,volatilityDF,bollingerBandDf)
+
+        bollingerBandDf = self.normalizeDataFrame(bollingerBandDf)
+        momentumDF = self.normalizeDataFrame(momentumDF)
+        volatilityDF = self.normalizeDataFrame(volatilityDF)
 
         unalteredPrices = get_data([symbol],dates,addSPY=False).dropna()
-        fiveDayPriceChange, trainX, trainY,unalteredPrices = self.prepareTrainXandY(bollingerBandValues,
+        fiveDayPriceChange, trainX, trainY,unalteredPrices = self.prepareTrainXandY(bollingerBandDf,
                                                                                      fiveDayPriceChange, momentumDF,
                                                                                      unalteredPrices, volatilityDF,symbol)
 
@@ -121,6 +126,10 @@ class learner(object):
         return learner,yPredTimesPriceDF,stats,unalteredPrices
 
     #Create and display a chart that shows the performance of the learner in training (YTrain) vs the performance of Y in testing (YPred)
+
+    def normalizeDataFrame(self,valuesDF):
+        return ((valuesDF - valuesDF.mean()) / valuesDF.std())
+
     def showChartYTrainYPred(self, fiveDayPrices, dailyPrices, yPredTimesPriceDF):
         ax = dailyPrices.plot(title="Y Train/Price/Pred Y", label="Price", color='b')
         fiveDayPrices.plot(label="Y Train", ax=ax, color='r')
@@ -149,34 +158,15 @@ class learner(object):
         trainY = allDF[:, -1]
         return fiveDayPriceChange, trainX, trainY, unalteredPrices
 
-    #Calculate mean and standard deviation for bolingerband, momentum, and volatility.  Package into a single array of stats.
-    def calculateTrainingStats(self, dates,symbol):
-        momentumDF = self.getMomentum(dates,symbol)
-        fiveDayPriceChange = self.getWeekPercentChange(dates,symbol)
-        volatilityDF = self.getVolatility(dates,symbol)
-        bollingerBandValue = self.getBollingerBandVAlue(symbol,dates,volatilityDF)
-
-        bollingerBandMean = bollingerBandValue.mean()
-        bollingerBandStandardDeviation = bollingerBandValue.std()
-        bollingerBandValue = (bollingerBandValue - bollingerBandMean) / bollingerBandStandardDeviation
-
-        momentumMean = momentumDF.mean()
-        momentumStd = momentumDF.std()
-        momentumDF = (momentumDF - momentumMean) / momentumStd
-
-        volatilityMean = volatilityDF.mean()
-        volatilityStd = volatilityDF.std()
-        volatilityDF = (volatilityDF - volatilityMean) / volatilityStd
-
+    def getStats(self,momentumDf, volatilityDf, bollingerDf):
         stats = []
-        stats.append(momentumMean)
-        stats.append(momentumStd)
-        stats.append(volatilityMean)
-        stats.append(volatilityStd)
-        stats.append(bollingerBandMean)
-        stats.append(bollingerBandStandardDeviation)
-
-        return fiveDayPriceChange, bollingerBandValue, momentumDF, stats, volatilityDF
+        stats.append(momentumDf.mean())
+        stats.append(momentumDf.std())
+        stats.append(volatilityDf.mean())
+        stats.append(volatilityDf.std())
+        stats.append(bollingerDf.mean())
+        stats.append(bollingerDf.std())
+        return stats
 
     def getBollingerBandVAlue(self,symbol, dates, volatilityDF):
         unalteredPrices = get_data([symbol],dates,addSPY=False).dropna()
@@ -189,7 +179,7 @@ class learner(object):
     def setUpTestData(self,dates,learner, stats,symbol):
         unalteredPrices = get_data([symbol], dates, addSPY=False).dropna()
         momentumDF = self.getMomentum(dates,symbol)
-        fiveDayPriceChange = self.getWeekPercentChange(dates,symbol)
+        fiveDayPriceChange = self.getWeekPercentPriceChange(dates,symbol)
         volatilityDF = self.getVolatility(dates,symbol)
         bollingerBandValue = self.getBollingerBandVAlue(symbol,dates,volatilityDF)
 
@@ -250,7 +240,7 @@ class learner(object):
 
         return momentumDF
 
-    def getWeekPercentChange(self,dates,symbol):
+    def getWeekPercentPriceChange(self,dates,symbol):
         forwardShiftedPrices = get_data([symbol],dates,addSPY=False).dropna()
         forwardShiftedPrices = forwardShiftedPrices.shift(-3)
         unalteredPrices = get_data([symbol],dates,addSPY=False).dropna()
